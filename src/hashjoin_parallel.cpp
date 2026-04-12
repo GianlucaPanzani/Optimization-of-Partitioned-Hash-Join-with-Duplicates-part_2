@@ -76,9 +76,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -96,11 +98,16 @@ struct Record {
 // ------------------------------------------------------------
 // Utility: command-line parsing
 // ------------------------------------------------------------
-static bool read_arg_u64(int argc, char** argv, const std::string& name, std::uint64_t& out) {
+static bool read_arg_u64(int argc, char** argv,
+                         std::initializer_list<std::string_view> names,
+                         std::uint64_t& out) {
     for (int i = 1; i + 1 < argc; ++i) {
-        if (name == argv[i]) {
-            out = std::strtoull(argv[i + 1], nullptr, 10);
-            return true;
+        const std::string_view arg(argv[i]);
+        for (const auto name : names) {
+            if (arg == name) {
+                out = std::strtoull(argv[i + 1], nullptr, 10);
+                return true;
+            }
         }
     }
     return false;
@@ -108,13 +115,16 @@ static bool read_arg_u64(int argc, char** argv, const std::string& name, std::ui
 static void usage(const char* prog) {
     std::cerr
         << "Usage:\n"
-        << "  " << prog << " -nr NR -ns NS -seed SEED -max-key K -p P\n\n"
+        << "  " << prog
+        << " -nr NR -ns NS -seed SEED -max-key K -p P [--partition-threads T] [--join-threads T]\n\n"
         << "Parameters:\n"
         << "  -nr         Number of records in relation R\n"
         << "  -ns         Number of records in relation S\n"
         << "  -seed       Deterministic seed\n"
         << "  -max-key    Keys are generated in [0, max-key)\n"
-        << "  -p          Number of partitions (power of two required in this reference code)\n";
+        << "  -p          Number of partitions (power of two required in this reference code)\n"
+        << "  --partition-threads / -partition-threads   Number of threads for partition phase (reserved)\n"
+        << "  --join-threads / -join-threads             Number of threads for join phase (reserved)\n";
 }
 static bool is_power_of_two(std::uint32_t x) {
     return x != 0 && (x & (x - 1U)) == 0;
@@ -171,8 +181,8 @@ static std::vector<Record> generate_relation(std::size_t n, std::uint64_t seed, 
 // If P is a power of two, then key & (P-1) maps into [0, P).
 // This is fast, but intentionally simplistic.
 //
-static inline std::uint32_t compute_partition_id(std::uint64_t key, std::uint32_t p) {
-    return static_cast<std::uint32_t>(key & static_cast<std::uint64_t>(p - 1U));
+static inline std::uint32_t compute_partition_id(std::uint64_t key, std::uint32_t P) {
+    return static_cast<std::uint32_t>(key & static_cast<std::uint64_t>(P - 1U));
 }
 
 // ------------------------------------------------------------
@@ -183,11 +193,11 @@ static inline std::uint32_t compute_partition_id(std::uint64_t key, std::uint32_
 //
 // hist[pid] = number of records whose key maps to pid
 //
-static std::vector<std::size_t> compute_histogram(const std::vector<Record>& rel, std::uint32_t p) {
-    std::vector<std::size_t> hist(p, 0);
+static std::vector<std::size_t> compute_histogram(const std::vector<Record>& data, std::uint32_t P) {
+    std::vector<std::size_t> hist(P, 0);
 
-    for (const auto& rec : rel) {
-        const std::uint32_t pid = compute_partition_id(rec.key, p);
+    for (const auto& record : data) {
+        const std::uint32_t pid = compute_partition_id(record.key, P);
         ++hist[pid];
     }
     return hist;
@@ -225,17 +235,17 @@ static std::vector<std::size_t> exclusive_prefix_sum(const std::vector<std::size
 //
 // We use a write cursor per partition, initialized from the begin offsets.
 //
-static std::vector<Record> scatter_partitioned(const std::vector<Record>& rel,
-                                               std::uint32_t p,
+static std::vector<Record> scatter_partitioned(const std::vector<Record>& data,
+                                               std::uint32_t P,
                                                const std::vector<std::size_t>& begin) {
-    std::vector<Record> out(rel.size());
+    std::vector<Record> out(data.size());
 
     // Current write position for each partition.
     std::vector<std::size_t> next = begin;
 
-    for (const auto& rec : rel) {
-        const std::uint32_t pid = compute_partition_id(rec.key, p);
-        out[next[pid]++] = rec;
+    for (const auto& record : data) {
+        const std::uint32_t pid = compute_partition_id(record.key, P);
+        out[next[pid]++] = record;
     }
 
     return out;
@@ -268,13 +278,13 @@ struct PartitionedRelation {
 // After this phase, all records belonging to the same partition
 // are stored contiguously in memory, enabling independent processing.
 //
-static PartitionedRelation partition_relation(const std::vector<Record>& rel, std::uint32_t p) {
-    const auto hist = compute_histogram(rel, p);
+static PartitionedRelation partition_relation(const std::vector<Record>& rel, std::uint32_t P) {
+    const auto hist = compute_histogram(rel, P);
     const auto begin = exclusive_prefix_sum(hist);
-    auto data = scatter_partitioned(rel, p, begin);
+    auto data = scatter_partitioned(rel, P, begin);
 
-    std::vector<std::size_t> end(p, 0);
-    for (std::uint32_t pid = 0; pid < p; ++pid) {
+    std::vector<std::size_t> end(P, 0);
+    for (std::uint32_t pid = 0; pid < P; ++pid) {
         end[pid] = begin[pid] + hist[pid];
     }
 
@@ -423,18 +433,25 @@ static JoinResult naive_join_verifier(const std::vector<Record>& R,
 // ------------------------------------------------------------
 int main(int argc, char** argv) {
     std::uint64_t nr = 0, ns = 0, seed = 0, max_key = 0, p = 0;
+    std::uint64_t partition_threads = 1, join_threads = 1;
 
-    if (!read_arg_u64(argc, argv, "-nr", nr) ||
-        !read_arg_u64(argc, argv, "-ns", ns) ||
-        !read_arg_u64(argc, argv, "-seed", seed) ||
-        !read_arg_u64(argc, argv, "-max-key", max_key) ||
-        !read_arg_u64(argc, argv, "-p", p)) {
+    if (!read_arg_u64(argc, argv, {"-nr"}, nr) ||
+        !read_arg_u64(argc, argv, {"-ns"}, ns) ||
+        !read_arg_u64(argc, argv, {"-seed"}, seed) ||
+        !read_arg_u64(argc, argv, {"-max-key"}, max_key) ||
+        !read_arg_u64(argc, argv, {"-p"}, p)) {
         usage(argv[0]);
         return 1;
     }
+    read_arg_u64(argc, argv, {"--partition-threads", "-partition-threads"}, partition_threads);
+    read_arg_u64(argc, argv, {"--join-threads", "-join-threads"}, join_threads);
 
     if (p > std::numeric_limits<std::uint32_t>::max()) {
         std::cerr << "Error: P too large.\n";
+        return 1;
+    }
+    if (partition_threads == 0 || join_threads == 0) {
+        std::cerr << "Error: thread counts must be greater than zero.\n";
         return 1;
     }
 
@@ -457,14 +474,15 @@ int main(int argc, char** argv) {
     const auto S = generate_relation(NS, seed ^ 0xdeadebdecdeedef1ULL, max_key);
 
     // Time only the join pipeline, not input generation.
-    const auto t0 = std::chrono::steady_clock::now();
+    const auto t0 = get_time();
     const JoinResult result = partitioned_hash_join_sequential(R, S, P);
-    const auto t1 = std::chrono::steady_clock::now();
+    const auto t1 = get_time();
 
-    const double sec = std::chrono::duration<double>(t1 - t0).count();
-
+    const double sec = get_diff(t0, t1);
     std::cout << "NR=" << NR << " NS=" << NS << " P=" << P
 			  << " seed=" << seed
+              << " partition_threads=" << partition_threads
+              << " join_threads=" << join_threads
               << " [0, " << max_key << ")\n";
 
     std::cout << "join_count=" << result.join_count << "\n";
