@@ -1,10 +1,7 @@
 CXX            		= g++ -std=c++17
-OPTFLAGS       		= -O3 -march=native
-AVXFLAGS       		= -mavx2
-AUTOFLAGS      		= -fopt-info-vec-optimized -fopt-info-vec-missed
-NOVECFLAGS     		= -fno-tree-vectorize
 CXXFLAGS       	    = -Wall -Wextra -I.
-LIBS           		=
+OPTFLAGS       		= -O3 -pthread -march=native
+AUTOFLAGS      		= -fopt-info-vec-optimized -fopt-info-vec-missed
 
 TARGETS 			= generate_datasets hashjoin_sequential hashjoin_parallel
 LIB_SOURCES    		= lib/dataset.cpp lib/timing.cpp lib/checksum.cpp lib/results.cpp lib/partition.cpp lib/config.cpp
@@ -19,13 +16,13 @@ LOG_FILES			= out/*.log err/*.log
 all: $(TARGETS)
 
 generate_datasets: generate_datasets.cpp $(LIB_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ generate_datasets.cpp $(LIB_SOURCES) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ generate_datasets.cpp $(LIB_SOURCES)
 
 hashjoin_sequential: hashjoin_sequential.cpp $(LIB_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_sequential.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_SEQ_REPORT)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_sequential.cpp $(LIB_SOURCES) 2> $(GCC_SEQ_REPORT)
 
 hashjoin_parallel: hashjoin_parallel.cpp $(LIB_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_parallel.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_PAR_REPORT)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_parallel.cpp $(LIB_SOURCES) 2> $(GCC_PAR_REPORT)
 
 clean:
 	-rm -fr *.o *~
