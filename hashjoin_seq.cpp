@@ -292,8 +292,6 @@ struct JoinResult {
     std::uint64_t join_count = 0;
     std::uint64_t checksum1 = 0;
     std::uint64_t checksum2 = 0;
-    std::double join_time_sec = 0.0;
-    std::double part_time_sec = 0.0;
 };
 
 // ------------------------------------------------------------
@@ -459,12 +457,12 @@ int main(int argc, char** argv) {
     const auto S = generate_relation(NS, seed ^ 0xdeadebdecdeedef1ULL, max_key);
 
     // Time only the join pipeline, not input generation.
-    t0 = get_time();
+    const auto t0 = std::chrono::steady_clock::now();
     const JoinResult result = partitioned_hash_join_sequential(R, S, P);
-    t1 = get_time();
+    const auto t1 = std::chrono::steady_clock::now();
 
-    const double sec = t0 - t1;
-
+    const double sec = std::chrono::duration<double>(t1 - t0).count();
+    
     std::cout << "NR=" << NR << " NS=" << NS << " P=" << P
 			  << " seed=" << seed
               << " [0, " << max_key << ")\n";
