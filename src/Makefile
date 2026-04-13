@@ -6,13 +6,11 @@ NOVECFLAGS     		= -fno-tree-vectorize
 CXXFLAGS       	    = -Wall -Wextra -I.
 LIBS           		=
 
-TARGETS 			= generate_datasets plain_novec plain_vec avx2
+TARGETS 			= generate_datasets hashjoin_sequential hashjoin_parallel
 LIB_SOURCES    		= lib/dataset.cpp lib/timing.cpp lib/checksum.cpp lib/results.cpp lib/partition.cpp lib/config.cpp
 AVX_SOURCES 		= lib/partition_avx2.cpp
-GCC_VEC_REPORT  	= compilation/gcc_vec_report.txt
-GCC_NOVEC_REPORT	= compilation/gcc_novec_report.txt
-GCC_AVX2_REPORT 	= compilation/gcc_avx2_report.txt
-RESULTS_FILES		=
+GCC_SEQ_REPORT  	= compilation/gcc_seq_report.txt
+GCC_PAR_REPORT		= compilation/gcc_par_report.txt
 LOG_FILES			= out/*.log err/*.log
 
 
@@ -23,14 +21,11 @@ all: $(TARGETS)
 generate_datasets: generate_datasets.cpp $(LIB_SOURCES)
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ generate_datasets.cpp $(LIB_SOURCES) $(LIBS)
 
-plain_novec: main.cpp $(LIB_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(NOVECFLAGS) -o $@ main.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_NOVEC_REPORT)
+hashjoin_sequential: hashjoin_sequential.cpp $(LIB_SOURCES)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_sequential.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_SEQ_REPORT)
 
-plain_vec: main.cpp $(LIB_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ main.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_VEC_REPORT)
-
-avx2: main.cpp $(LIB_SOURCES) $(AVX_SOURCES)
-	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AVXFLAGS) $(AUTOFLAGS) -DENABLE_AVX2 -o $@ main.cpp $(LIB_SOURCES) $(AVX_SOURCES) $(LIBS) 2> $(GCC_AVX2_REPORT)
+hashjoin_parallel: hashjoin_parallel.cpp $(LIB_SOURCES)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_parallel.cpp $(LIB_SOURCES) $(LIBS) 2> $(GCC_PAR_REPORT)
 
 clean:
 	-rm -fr *.o *~
@@ -39,4 +34,4 @@ cleanlogs: clean
 	-rm -fr $(LOG_FILES)
 
 cleanall: clean
-	-rm -fr $(TARGETS) $(GCC_VEC_REPORT) $(GCC_NOVEC_REPORT) $(GCC_AVX2_REPORT) $(RESULTS_FILES) $(LOG_FILES)
+	-rm -fr $(TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES)
