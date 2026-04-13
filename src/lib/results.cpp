@@ -45,12 +45,13 @@ void append_to_csv(
     const std::string& csv_path,
     std::uint64_t N,
     std::uint32_t P,
-    const std::string& hash_name,
-    const std::string& exec_type,
     const std::string& checksum,
     double throughput,
     double partition_time,
-    double global_time
+    const std::size_t nr,
+    const std::size_t ns,
+    const std::uint64_t max_key,
+    
 ) {
     const std::filesystem::path output_path(csv_path);
     const std::filesystem::path parent = output_path.parent_path();
@@ -71,12 +72,9 @@ void append_to_csv(
 
     out << N << ','
         << P << ','
-        << escape_csv_field(hash_name) << ','
-        << escape_csv_field(exec_type) << ','
         << escape_csv_field(checksum) << ','
         << format_double(throughput) << ','
-        << format_double(partition_time) << ','
-        << format_double(global_time) << '\n';
+        << format_double(partition_time) << '\n';
 
     if (!out) {
         throw std::runtime_error("Error while writing CSV file: " + output_path.string());

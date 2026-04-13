@@ -75,10 +75,14 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <initializer_list>
 #include <iostream>
 #include <limits>
+#include <map>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -128,6 +132,70 @@ static void usage(const char* prog) {
 }
 static bool is_power_of_two(std::uint32_t x) {
     return x != 0 && (x & (x - 1U)) == 0;
+}
+
+static std::string escape_csv_field(const std::string& field) {
+    if (field.find_first_of(",\"\n\r") == std::string::npos) {
+        return field;
+    }
+
+    std::string escaped = "\"";
+    for (const char current : field) {
+        if (current == '"') {
+            escaped += "\"\"";
+        } else {
+            escaped.push_back(current);
+        }
+    }
+    escaped.push_back('"');
+    return escaped;
+}
+
+using ResultMap = std::map<std::string, std::string>;
+
+static void append_to_csv(const std::string& csv_path, const ResultMap& results) {
+    if (results.empty()) {
+        throw std::invalid_argument("results map cannot be empty");
+    }
+
+    const std::filesystem::path output_path(csv_path);
+    const std::filesystem::path parent = output_path.parent_path();
+    if (!parent.empty()) {
+        std::filesystem::create_directories(parent);
+    }
+
+    const bool needs_header = !std::filesystem::exists(output_path) || std::filesystem::file_size(output_path) == 0;
+
+    std::ofstream out(output_path, std::ios::app);
+    if (!out) {
+        throw std::runtime_error("Cannot open CSV file for writing: " + output_path.string());
+    }
+
+    if (needs_header) {
+        bool first = true;
+        for (const auto& entry : results) {
+            if (!first) {
+                out << ',';
+            }
+            out << escape_csv_field(entry.first);
+            first = false;
+        }
+        out << '\n';
+    }
+
+    bool first = true;
+    for (const auto& entry : results) {
+        if (!first) {
+            out << ',';
+        }
+        out << escape_csv_field(entry.second);
+        first = false;
+    }
+    out << '\n';
+
+    if (!out) {
+        throw std::runtime_error("Error while writing CSV file: " + output_path.string());
+    }
 }
 
 // ------------------------------------------------------------
@@ -388,13 +456,13 @@ static JoinResult join_one_partition(const PartitionedRelation& Rpart,
 static JoinResult partitioned_hash_join_sequential(const std::vector<Record>& R,
                                                    const std::vector<Record>& S,
                                                    std::uint32_t p) {
+    JoinResult total{};
+
     // Phase 1: partition both relations
     const PartitionedRelation Rpart = partition_relation(R, p);
     const PartitionedRelation Spart = partition_relation(S, p);
 
     // Phase 2 + 3: local joins and global reduction
-    JoinResult total{};
-
     for (std::uint32_t pid = 0; pid < p; ++pid) {
         const JoinResult local = join_one_partition(Rpart, Spart, pid);
         total.join_count += local.join_count;
@@ -474,11 +542,12 @@ int main(int argc, char** argv) {
     const auto S = generate_relation(NS, seed ^ 0xdeadebdecdeedef1ULL, max_key);
 
     // Time only the join pipeline, not input generation.
-    const auto t0 = get_time();
+    const auto t0 = std::chrono::steady_clock::now();
     const JoinResult result = partitioned_hash_join_sequential(R, S, P);
-    const auto t1 = get_time();
+    const auto t1 = std::chrono::steady_clock::now();
 
-    const double sec = get_diff(t0, t1);
+    const double sec = std::chrono::duration<double>(t1 - t0).count();
+    
     std::cout << "NR=" << NR << " NS=" << NS << " P=" << P
 			  << " seed=" << seed
               << " partition_threads=" << partition_threads
@@ -499,6 +568,22 @@ int main(int argc, char** argv) {
         std::cout << "naive_checksum1=" << naive.checksum1 << "\n";
         std::cout << "naive_checksum2=" << naive.checksum2 << "\n";
     }
+
+    // Append results to csv file.
+    const ResultMap csv_results = {
+        {"checksum1", std::to_string(result.checksum1)},
+        {"checksum2", std::to_string(result.checksum2)},
+        {"join_count", std::to_string(result.join_count)},
+        {"partition_time", std::to_string(result.partition_time)},
+        {"join_time", std::to_string(result.join_time)},
+        {"partition_threads", std::to_string(partition_threads)},
+        {"join_threads", std::to_string(join_threads)},
+        {"max_key", std::to_string(max_key)},
+        {"nr", std::to_string(NR)},
+        {"ns", std::to_string(NS)},
+        {"time_sec", std::to_string(sec)}
+    };
+    append_to_csv("results/hashjoin_parallel.csv", csv_results);
 
     return 0;
 }
