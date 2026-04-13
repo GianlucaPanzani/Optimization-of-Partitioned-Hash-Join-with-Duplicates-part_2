@@ -9,14 +9,15 @@ cd "$SCRIPT_DIR"
 mkdir -p out err
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
-    echo "Usage: $0 EXECUTABLE [REPEAT_COUNT(optional)] [GRID_CONFIG(optional)]"
-    echo "  EXECUTABLE: binary to benchmark (must support -nr -ns -seed -max-key -p --partition-threads --join-threads)"
+    echo "Usage: $0 EXECUTABLE_NAME [REPEAT_COUNT(optional)] [GRID_CONFIG(optional)]"
+    echo "  EXECUTABLE_NAME: make target to compile and benchmark (ex: hashjoin_sequential, hashjoin_parallel)"
     echo "  REPEAT_COUNT: positive integer (default: 1)"
     echo "  GRID_CONFIG: shell file exporting benchmark arrays (default: $SCRIPT_DIR/runners/grid_search.sh)"
     exit 1
 fi
 
 EXECUTABLE_INPUT="$1"
+EXECUTABLE_TARGET="$(basename "$EXECUTABLE_INPUT")"
 REPEAT_COUNT="${2:-1}"
 GRID_CONFIG="${3:-$SCRIPT_DIR/runners/grid_search.sh}"
 
@@ -47,14 +48,14 @@ if [ "${#SEED_VALUES[@]:-0}" -eq 0 ] || [ "${#MAX_KEY_VALUES[@]:-0}" -eq 0 ] || 
     exit 1
 fi
 
-if [[ "$EXECUTABLE_INPUT" = /* ]]; then
-    EXECUTABLE="$EXECUTABLE_INPUT"
-elif [ -x "$EXECUTABLE_INPUT" ]; then
-    EXECUTABLE="$EXECUTABLE_INPUT"
-elif [ -x "$SCRIPT_DIR/$EXECUTABLE_INPUT" ]; then
-    EXECUTABLE="$SCRIPT_DIR/$EXECUTABLE_INPUT"
-else
-    echo "Executable not found or not executable: $EXECUTABLE_INPUT"
+mkdir -p compilation
+if ! make "$EXECUTABLE_TARGET"; then
+    echo "Compilation failed or unknown make target: $EXECUTABLE_TARGET"
+    exit 1
+fi
+EXECUTABLE="$SCRIPT_DIR/$EXECUTABLE_TARGET"
+if [ ! -x "$EXECUTABLE" ]; then
+    echo "Compiled executable not found or not executable: $EXECUTABLE"
     exit 1
 fi
 

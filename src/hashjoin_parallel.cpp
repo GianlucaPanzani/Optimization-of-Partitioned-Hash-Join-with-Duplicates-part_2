@@ -370,6 +370,8 @@ struct JoinResult {
     std::uint64_t join_count = 0;
     std::uint64_t checksum1 = 0;
     std::uint64_t checksum2 = 0;
+    double partition_time = 0.0; // reserved for timing the partition phase
+    double join_time = 0.0;      // reserved for timing the join phase
 };
 
 // ------------------------------------------------------------
@@ -583,7 +585,7 @@ int main(int argc, char** argv) {
         {"ns", std::to_string(NS)},
         {"time_sec", std::to_string(sec)}
     };
-    append_to_csv("results/hashjoin_parallel.csv", csv_results);
+    append_to_csv("results/hashjoin_sequential.csv", csv_results);
 
     return 0;
 }

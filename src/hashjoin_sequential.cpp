@@ -370,6 +370,8 @@ struct JoinResult {
     std::uint64_t join_count = 0;
     std::uint64_t checksum1 = 0;
     std::uint64_t checksum2 = 0;
+    double partition_time = 0.0; // reserved for timing the partition phase
+    double join_time = 0.0;      // reserved for timing the join phase
 };
 
 // ------------------------------------------------------------

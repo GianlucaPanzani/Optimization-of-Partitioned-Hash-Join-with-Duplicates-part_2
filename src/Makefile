@@ -1,11 +1,10 @@
-CXX            		= g++ -std=c++17
-CXXFLAGS       	    = -Wall -Wextra -I.
+CXX            		= g++
+CXXFLAGS       	    = -std=c++17 -Wall -Wextra -I.
 OPTFLAGS       		= -O3 -pthread -march=native
 AUTOFLAGS      		= -fopt-info-vec-optimized -fopt-info-vec-missed
 
 TARGETS 			= generate_datasets hashjoin_sequential hashjoin_parallel
-LIB_SOURCES    		= lib/dataset.cpp lib/timing.cpp lib/checksum.cpp lib/results.cpp lib/partition.cpp lib/config.cpp
-AVX_SOURCES 		= lib/partition_avx2.cpp
+LIB_SOURCES    		= 
 GCC_SEQ_REPORT  	= compilation/gcc_seq_report.txt
 GCC_PAR_REPORT		= compilation/gcc_par_report.txt
 LOG_FILES			= out/*.log err/*.log
