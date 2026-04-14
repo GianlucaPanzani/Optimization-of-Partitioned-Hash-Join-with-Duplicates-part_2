@@ -71,10 +71,12 @@ if ! require_non_empty_array "SEED_VALUES" || ! require_non_empty_array "MAX_KEY
     exit 1
 fi
 
-if [[ "$EXECUTABLE_TARGET" == "hashjoin_sequential" ]]; then
-    make cleanallseq
-elif [[ "$EXECUTABLE_TARGET" == "hashjoin_parallel" ]]; then
-    make cleanallpar
+if [[ "$EXECUTABLE_TARGET" == "hashjoin_seq" ]]; then
+    make cleanall_seq
+elif [[ "$EXECUTABLE_TARGET" == "hashjoin_par_p" ]]; then
+    make cleanall_par_p
+elif [[ "$EXECUTABLE_TARGET" == "hashjoin_par_pj" ]]; then
+    make cleanall_par_pj
 else
     echo "Cleaning not done"
     exit 1
