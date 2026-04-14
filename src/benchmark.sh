@@ -89,8 +89,9 @@ fi
 TOTAL=$(( ${#SEED_VALUES[@]} * ${#MAX_KEY_VALUES[@]} * ${#PARTITION_THREAD_VALUES[@]} * ${#JOIN_THREAD_VALUES[@]} * REPEAT_COUNT ))
 COUNT=0
 
+echo
 echo "Benchmark executable: $EXECUTABLE_TARGET"
-echo "Grid source:          $GRID_CONFIG"
+echo "Grid source:          $2"
 echo "Fixed parameters:     N=$N_VALUE P=$P_VALUE"
 echo "Repeat count:         $REPEAT_COUNT"
 echo "Total runs:           $TOTAL"

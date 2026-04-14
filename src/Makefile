@@ -4,7 +4,7 @@ OPTFLAGS       		= -O3 -pthread -march=native
 AUTOFLAGS      		= -fopt-info-vec-optimized -fopt-info-vec-missed
 
 TARGETS 			= generate_datasets hashjoin_sequential hashjoin_parallel
-LIB_SOURCES    		= 
+LIB_SOURCES    		= lib/timing.cpp
 GCC_SEQ_REPORT  	= compilation/gcc_seq_report.txt
 GCC_PAR_REPORT		= compilation/gcc_par_report.txt
 LOG_FILES			= out/*.log err/*.log

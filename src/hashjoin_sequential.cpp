@@ -88,6 +88,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "lib/timing.hpp"
+
 // ------------------------------------------------------------
 // Record definition
 // ------------------------------------------------------------
@@ -461,8 +463,11 @@ static JoinResult partitioned_hash_join_sequential(const std::vector<Record>& R,
     JoinResult total{};
 
     // Phase 1: partition both relations
+    double t0 = get_time();
     const PartitionedRelation Rpart = partition_relation(R, p);
     const PartitionedRelation Spart = partition_relation(S, p);
+    double t1 = get_time();
+    total.partition_time = t1 - t0;
 
     // Phase 2 + 3: local joins and global reduction
     for (std::uint32_t pid = 0; pid < p; ++pid) {
