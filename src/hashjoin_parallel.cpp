@@ -542,6 +542,44 @@ static JoinResult join_one_partition(const PartitionedRelation& Rpart,
     return result;
 }
 
+static JoinResult join_partitions(const PartitionedRelation& Rpart,
+                                  const PartitionedRelation& Spart,
+                                  std::uint32_t p,
+                                  std::size_t join_threads) {
+    const std::size_t num_join_threads = std::max<std::size_t>(1, std::min<std::size_t>(join_threads, static_cast<std::size_t>(p)));
+
+    std::vector<JoinResult> partial_results(num_join_threads);
+    std::vector<std::thread> workers;
+    workers.reserve(num_join_threads);
+    for (std::size_t t = 0; t < num_join_threads; ++t) {
+        workers.emplace_back([&, t]() {
+            JoinResult local{};
+            const std::uint32_t pid_begin = static_cast<std::uint32_t>((static_cast<std::uint64_t>(t) * p) / num_join_threads);
+            const std::uint32_t pid_end = static_cast<std::uint32_t>((static_cast<std::uint64_t>(t + 1) * p) / num_join_threads);
+            for (std::uint32_t pid = pid_begin; pid < pid_end; ++pid) {
+                const JoinResult one = join_one_partition(Rpart, Spart, pid);
+                local.join_count += one.join_count;
+                local.checksum1 += one.checksum1;
+                local.checksum2 += one.checksum2;
+            }
+            partial_results[t] = local;
+        });
+    }
+
+    for (auto& worker : workers) {
+        worker.join();
+    }
+
+    JoinResult total{};
+    for (const auto& local : partial_results) {
+        total.join_count += local.join_count;
+        total.checksum1 += local.checksum1;
+        total.checksum2 += local.checksum2;
+    }
+
+    return total;
+}
+
 // ------------------------------------------------------------
 // Full sequential partitioned hash join
 // ------------------------------------------------------------
@@ -563,7 +601,6 @@ static JoinResult partitioned_hash_join(const std::vector<Record>& R,
                                         std::size_t part_threads,
                                         std::size_t join_threads) {
     JoinResult result{};
-    (void)join_threads;
 
     // Phase 1: partition both relations
     double t0 = get_time();
@@ -574,12 +611,10 @@ static JoinResult partitioned_hash_join(const std::vector<Record>& R,
 
     // Phase 2 + 3: local joins and global reduction
     t0 = get_time();
-    for (std::uint32_t pid = 0; pid < p; ++pid) {
-        const JoinResult local = join_one_partition(Rpart, Spart, pid);
-        result.join_count += local.join_count;
-        result.checksum1 += local.checksum1;
-        result.checksum2 += local.checksum2;
-    }
+    const JoinResult join_result = join_partitions(Rpart, Spart, p, join_threads);
+    result.join_count = join_result.join_count;
+    result.checksum1 = join_result.checksum1;
+    result.checksum2 = join_result.checksum2;
     t1 = get_time();
     result.join_time = t1 - t0;
 
