@@ -73,6 +73,7 @@
 //
 
 #include <chrono>
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -85,6 +86,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -129,7 +131,7 @@ static void usage(const char* prog) {
         << "  -seed       Deterministic seed\n"
         << "  -max-key    Keys are generated in [0, max-key)\n"
         << "  -p          Number of partitions (power of two required in this reference code)\n"
-        << "  --partition-threads / -partition-threads   Number of threads for partition phase (reserved)\n"
+        << "  --partition-threads / -partition-threads   Number of threads for partition phase\n"
         << "  --join-threads / -join-threads             Number of threads for join phase (reserved)\n";
 }
 static bool is_power_of_two(std::uint32_t x) {
@@ -348,7 +350,7 @@ struct PartitionedRelation {
 // After this phase, all records belonging to the same partition
 // are stored contiguously in memory, enabling independent processing.
 //
-static PartitionedRelation partition_relation(const std::vector<Record>& rel, std::uint32_t P) {
+[[maybe_unused]] static PartitionedRelation partition_relation(const std::vector<Record>& rel, std::uint32_t P) {
     const auto hist = compute_histogram(rel, P);
     const auto begin = exclusive_prefix_sum(hist);
     auto data = scatter_partitioned(rel, P, begin);
@@ -360,6 +362,104 @@ static PartitionedRelation partition_relation(const std::vector<Record>& rel, st
 
     return PartitionedRelation{
         .data = std::move(data),
+        .begin = begin,
+        .end = end
+    };
+}
+
+// ------------------------------------------------------------
+// Parallel partitioning pipeline for one relation
+// ------------------------------------------------------------
+//
+// This preserves the same algorithmic phases:
+//   1) histogram (thread-local)
+//   2) prefix sum (global)
+//   3) scatter (thread-local offsets, no atomics)
+//
+static PartitionedRelation partition_relation_parallel(const std::vector<Record>& data,
+                                                       std::uint32_t P,
+                                                       std::size_t requested_threads) {
+    const std::size_t N = data.size();
+    if (N == 0) {
+        return PartitionedRelation{
+            .data = {},
+            .begin = std::vector<std::size_t>(P, 0),
+            .end = std::vector<std::size_t>(P, 0)
+        };
+    }
+
+    // Phase 1: local histograms (T x P)
+    const std::size_t num_threads = std::max<std::size_t>(1, std::min<std::size_t>(requested_threads, N));
+    std::vector<std::size_t> chunk_begin(num_threads, 0);
+    std::vector<std::size_t> chunk_end(num_threads, 0);
+    const std::size_t base = N / num_threads;
+    const std::size_t rem = N % num_threads;
+    std::size_t cursor = 0;
+    std::vector<std::thread> workers;
+    workers.reserve(num_threads);
+    // Vector of vectors of counters (each element [t][id] is the number of occurrences of the partition ID "id" in chunck "t")
+    std::vector<std::vector<std::size_t>> local_partition_counter(num_threads, std::vector<std::size_t>(P, 0));
+    for (std::size_t t = 0; t < num_threads; ++t) {
+        const std::size_t span = base + ((t < rem) ? 1 : 0);
+        chunk_begin[t] = cursor;
+        chunk_end[t] = cursor + span;
+        cursor += span;
+        
+        // thread execution
+        workers.emplace_back([&, t]() {
+            auto& hist = local_partition_counter[t];
+            for (std::size_t i = chunk_begin[t]; i < chunk_end[t]; ++i) {
+                const std::uint32_t pid = compute_partition_id(rel[i].key, P);
+                ++hist[pid];
+            }
+        });
+    }
+    for (auto& worker : workers) {
+        worker.join();
+    }
+
+    // Reduce local histograms into global histogram
+    std::vector<std::size_t> hist(P, 0);
+    for (std::size_t t = 0; t < num_threads; ++t) {
+        for (std::uint32_t pid = 0; pid < P; ++pid) {
+            hist[pid] += local_partition_counter[t][pid];
+        }
+    }
+
+    // Phase 2: global exclusive prefix sum (compute per-thread write offsets for each partition)
+    const std::vector<std::size_t> begin = exclusive_prefix_sum(hist);
+    std::vector<std::size_t> end(P, 0);
+    std::vector<std::vector<std::size_t>> thread_offsets(num_threads, std::vector<std::size_t>(P, 0));
+    for (std::uint32_t pid = 0; pid < P; ++pid) {
+        std::size_t off = begin[pid];
+        end[pid] = begin[pid] + hist[pid];
+        for (std::size_t t = 0; t < num_threads; ++t) {
+            thread_offsets[t][pid] = off;
+            off += local_partition_counter[t][pid];
+        }
+    }
+
+    // Phase 3: scatter using thread-local cursors
+    std::vector<Record> out(N);
+    workers.clear();
+    workers.reserve(num_threads);
+    for (std::size_t t = 0; t < num_threads; ++t) {
+        workers.emplace_back([&, t]() {
+            std::vector<std::size_t> next = thread_offsets[t];
+            for (std::size_t i = chunk_begin[t]; i < chunk_end[t]; ++i) {
+                const Record record = data[i];
+                const std::uint32_t pid = compute_partition_id(record.key, P);
+                out[next[pid]] = record;
+                next[pid]++;
+            }
+        });
+    }
+    for (auto& worker : workers) {
+        worker.join();
+    }
+
+    return PartitionedRelation{
+        .data = std::move(out),
         .begin = begin,
         .end = end
     };
@@ -459,23 +559,29 @@ static JoinResult join_one_partition(const PartitionedRelation& Rpart,
 //
 static JoinResult partitioned_hash_join(const std::vector<Record>& R,
                                         const std::vector<Record>& S,
-                                        std::uint32_t p) {
+                                        std::uint32_t p,
+                                        std::size_t partition_threads,
+                                        std::size_t join_threads) {
     JoinResult result{};
+    (void)join_threads;
 
     // Phase 1: partition both relations
     double t0 = get_time();
-    const PartitionedRelation Rpart = partition_relation(R, p);
-    const PartitionedRelation Spart = partition_relation(S, p);
+    const PartitionedRelation Rpart = partition_relation_parallel(R, p, partition_threads);
+    const PartitionedRelation Spart = partition_relation_parallel(S, p, partition_threads);
     double t1 = get_time();
     result.part_time = t1 - t0;
 
     // Phase 2 + 3: local joins and global reduction
+    t0 = get_time();
     for (std::uint32_t pid = 0; pid < p; ++pid) {
         const JoinResult local = join_one_partition(Rpart, Spart, pid);
         result.join_count += local.join_count;
         result.checksum1 += local.checksum1;
         result.checksum2 += local.checksum2;
     }
+    t1 = get_time();
+    result.join_time = t1 - t0;
 
     return result;
 }
@@ -550,7 +656,7 @@ int main(int argc, char** argv) {
 
     // Time only the join pipeline, not input generation.
     double t0 = get_time();
-    const JoinResult result = partitioned_hash_join(R, S, P);
+    const JoinResult result = partitioned_hash_join(R, S, P, static_cast<std::size_t>(part_threads), static_cast<std::size_t>(join_threads));
     double t1 = get_time();
     const double tot_time_sec = t1 - t0;
     
@@ -565,8 +671,8 @@ int main(int argc, char** argv) {
     std::cout << "checksum1=" << result.checksum1 << "\n";
     std::cout << "checksum2=" << result.checksum2 << "\n";
     std::cout << std::fixed << std::setprecision(6);
-    std::cout << "part_time_sec=" << result.part_time_sec << "\n";
-    std::cout << "join_time_sec=" << result.join_time_sec << "\n";
+    std::cout << "part_time_sec=" << result.part_time << "\n";
+    std::cout << "join_time_sec=" << result.join_time << "\n";
     std::cout << "tot_time_sec=" << tot_time_sec << "\n";
 
     //Tiny debug check, only for very small datasets
@@ -582,14 +688,14 @@ int main(int argc, char** argv) {
         {"checksum1", std::to_string(result.checksum1)},
         {"checksum2", std::to_string(result.checksum2)},
         {"join_count", std::to_string(result.join_count)},
-        {"partition_time", std::to_string(result.part_time_sec)},
-        {"join_time", std::to_string(result.join_time_sec)},
+        {"partition_time", std::to_string(result.part_time)},
+        {"join_time", std::to_string(result.join_time)},
         {"partition_threads", std::to_string(part_threads)},
         {"join_threads", std::to_string(join_threads)},
         {"max_key", std::to_string(max_key)},
         {"nr", std::to_string(NR)},
         {"ns", std::to_string(NS)},
-        {"time_sec", std::to_string(sec)}
+        {"time_sec", std::to_string(tot_time_sec)}
     };
     append_to_csv("results/hashjoin_parallel.csv", results_map);
 
