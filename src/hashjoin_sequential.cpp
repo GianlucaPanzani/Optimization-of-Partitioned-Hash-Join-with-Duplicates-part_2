@@ -372,7 +372,7 @@ struct JoinResult {
     std::uint64_t join_count = 0;
     std::uint64_t checksum1 = 0;
     std::uint64_t checksum2 = 0;
-    double partition_time = 0.0; // reserved for timing the partition phase
+    double part_time = 0.0; // reserved for timing the partition phase
     double join_time = 0.0;      // reserved for timing the join phase
 };
 
@@ -457,27 +457,27 @@ static JoinResult join_one_partition(const PartitionedRelation& Rpart,
 // Each partition can be processed independently.
 // This property is the basis for parallelization in Module 2.
 //
-static JoinResult partitioned_hash_join_sequential(const std::vector<Record>& R,
-                                                   const std::vector<Record>& S,
-                                                   std::uint32_t p) {
-    JoinResult total{};
+static JoinResult partitioned_hash_join(const std::vector<Record>& R,
+                                        const std::vector<Record>& S,
+                                        std::uint32_t p) {
+    JoinResult result{};
 
     // Phase 1: partition both relations
     double t0 = get_time();
     const PartitionedRelation Rpart = partition_relation(R, p);
     const PartitionedRelation Spart = partition_relation(S, p);
     double t1 = get_time();
-    total.partition_time = t1 - t0;
+    result.part_time = t1 - t0;
 
     // Phase 2 + 3: local joins and global reduction
     for (std::uint32_t pid = 0; pid < p; ++pid) {
         const JoinResult local = join_one_partition(Rpart, Spart, pid);
-        total.join_count += local.join_count;
-        total.checksum1 += local.checksum1;
-        total.checksum2 += local.checksum2;
+        result.join_count += local.join_count;
+        result.checksum1 += local.checksum1;
+        result.checksum2 += local.checksum2;
     }
 
-    return total;
+    return result;
 }
 
 // ------------------------------------------------------------
@@ -508,7 +508,7 @@ static JoinResult naive_join_verifier(const std::vector<Record>& R,
 // ------------------------------------------------------------
 int main(int argc, char** argv) {
     std::uint64_t nr = 0, ns = 0, seed = 0, max_key = 0, p = 0;
-    std::uint64_t partition_threads = 1, join_threads = 1;
+    std::uint64_t part_threads = 1, join_threads = 1;
 
     if (!read_arg_u64(argc, argv, {"-nr"}, nr) ||
         !read_arg_u64(argc, argv, {"-ns"}, ns) ||
@@ -518,14 +518,14 @@ int main(int argc, char** argv) {
         usage(argv[0]);
         return 1;
     }
-    read_arg_u64(argc, argv, {"--partition-threads", "-partition-threads"}, partition_threads);
+    read_arg_u64(argc, argv, {"--partition-threads", "-partition-threads"}, part_threads);
     read_arg_u64(argc, argv, {"--join-threads", "-join-threads"}, join_threads);
 
     if (p > std::numeric_limits<std::uint32_t>::max()) {
         std::cerr << "Error: P too large.\n";
         return 1;
     }
-    if (partition_threads == 0 || join_threads == 0) {
+    if (part_threads == 0 || join_threads == 0) {
         std::cerr << "Error: thread counts must be greater than zero.\n";
         return 1;
     }
@@ -549,24 +549,25 @@ int main(int argc, char** argv) {
     const auto S = generate_relation(NS, seed ^ 0xdeadebdecdeedef1ULL, max_key);
 
     // Time only the join pipeline, not input generation.
-    const auto t0 = std::chrono::steady_clock::now();
-    const JoinResult result = partitioned_hash_join_sequential(R, S, P);
-    const auto t1 = std::chrono::steady_clock::now();
-
-    const double sec = std::chrono::duration<double>(t1 - t0).count();
+    double t0 = get_time();
+    const JoinResult result = partitioned_hash_join(R, S, P);
+    double t1 = get_time();
+    const double tot_time_sec = t1 - t0;
     
-    std::cout << "NR=" << NR << " NS=" << NS << " P=" << P
-			  << " seed=" << seed
-              << " partition_threads=" << partition_threads
-              << " join_threads=" << join_threads
-              << " [0, " << max_key << ")\n";
-
+    std::cout << "NR=" << NR 
+            << " NS=" << NS 
+            << " P=" << P
+			<< " seed=" << seed
+            << " partition_threads=" << part_threads
+            << " join_threads=" << join_threads
+            << " [0, " << max_key << ")\n";
     std::cout << "join_count=" << result.join_count << "\n";
     std::cout << "checksum1=" << result.checksum1 << "\n";
     std::cout << "checksum2=" << result.checksum2 << "\n";
-
     std::cout << std::fixed << std::setprecision(6);
-    std::cout << "time_sec=" << sec << "\n";
+    std::cout << "part_time_sec=" << result.part_time_sec << "\n";
+    std::cout << "join_time_sec=" << result.join_time_sec << "\n";
+    std::cout << "tot_time_sec=" << tot_time_sec << "\n";
 
     //Tiny debug check, only for very small datasets
     if (NR <= 500 && NS <= 500) {
@@ -576,21 +577,21 @@ int main(int argc, char** argv) {
         std::cout << "naive_checksum2=" << naive.checksum2 << "\n";
     }
 
-    // Append results to csv file.
-    const ResultMap csv_results = {
+    // Append results to csv file
+    const ResultMap results_map = {
         {"checksum1", std::to_string(result.checksum1)},
         {"checksum2", std::to_string(result.checksum2)},
         {"join_count", std::to_string(result.join_count)},
-        {"partition_time", std::to_string(result.partition_time)},
-        {"join_time", std::to_string(result.join_time)},
-        {"partition_threads", std::to_string(partition_threads)},
+        {"partition_time", std::to_string(result.part_time_sec)},
+        {"join_time", std::to_string(result.join_time_sec)},
+        {"partition_threads", std::to_string(part_threads)},
         {"join_threads", std::to_string(join_threads)},
         {"max_key", std::to_string(max_key)},
         {"nr", std::to_string(NR)},
         {"ns", std::to_string(NS)},
         {"time_sec", std::to_string(sec)}
     };
-    append_to_csv("results/hashjoin_sequential.csv", csv_results);
+    append_to_csv("results/hashjoin_sequential.csv", results_map);
 
     return 0;
 }
