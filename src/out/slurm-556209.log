@@ -1,7 +1,0 @@
-Running on node: node09 (job: 556209)
-Command: /home/g.panzani/assignment2/Optimization-of-Partitioned-Hash-Join-with-Duplicates-part_2/src/hashjoin_sequential -nr 10000000 -ns 10000000 -seed 29 -max-key 65536 -p 256 --partition-threads 1 --join-threads 1
-NR=10000000 NS=10000000 P=256 seed=29 partition_threads=1 join_threads=1 [0, 65536)
-join_count=1525839945
-checksum1=10221050253338831582
-checksum2=11701097440818576254
-time_sec=0.525918

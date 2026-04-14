@@ -71,10 +71,15 @@ if ! require_non_empty_array "SEED_VALUES" || ! require_non_empty_array "MAX_KEY
     exit 1
 fi
 
-if ! make cleanall; then
+if [[ "$EXECUTABLE_TARGET" == "hashjoin_sequential" ]]; then
+    make cleanallseq
+elif [[ "$EXECUTABLE_TARGET" == "hashjoin_parallel" ]]; then
+    make cleanallpar
+else
     echo "Cleaning not done"
     exit 1
 fi
+
 mkdir -p compilation
 if ! make -B "$EXECUTABLE_TARGET"; then
     echo "Compilation failed or unknown make target: $EXECUTABLE_TARGET"

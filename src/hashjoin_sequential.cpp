@@ -372,8 +372,8 @@ struct JoinResult {
     std::uint64_t join_count = 0;
     std::uint64_t checksum1 = 0;
     std::uint64_t checksum2 = 0;
-    double part_time = 0.0; // reserved for timing the partition phase
-    double join_time = 0.0;      // reserved for timing the join phase
+    double part_time_sec = 0.0; // reserved for timing the partition phase
+    double join_time_sec = 0.0; // reserved for timing the join phase
 };
 
 // ------------------------------------------------------------
@@ -467,7 +467,7 @@ static JoinResult partitioned_hash_join(const std::vector<Record>& R,
     const PartitionedRelation Rpart = partition_relation(R, p);
     const PartitionedRelation Spart = partition_relation(S, p);
     double t1 = get_time();
-    result.part_time = t1 - t0;
+    result.part_time_sec = t1 - t0;
 
     // Phase 2 + 3: local joins and global reduction
     for (std::uint32_t pid = 0; pid < p; ++pid) {
@@ -589,7 +589,7 @@ int main(int argc, char** argv) {
         {"max_key", std::to_string(max_key)},
         {"nr", std::to_string(NR)},
         {"ns", std::to_string(NS)},
-        {"time_sec", std::to_string(sec)}
+        {"time_sec", std::to_string(tot_time_sec)}
     };
     append_to_csv("results/hashjoin_sequential.csv", results_map);
 

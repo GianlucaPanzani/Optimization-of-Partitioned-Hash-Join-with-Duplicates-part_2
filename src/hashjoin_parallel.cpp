@@ -409,7 +409,7 @@ static PartitionedRelation partition_relation_parallel(const std::vector<Record>
         workers.emplace_back([&, t]() {
             auto& hist = local_partition_counter[t];
             for (std::size_t i = chunk_begin[t]; i < chunk_end[t]; ++i) {
-                const std::uint32_t pid = compute_partition_id(rel[i].key, P);
+                const std::uint32_t pid = compute_partition_id(data[i].key, P);
                 ++hist[pid];
             }
         });
@@ -560,15 +560,15 @@ static JoinResult join_one_partition(const PartitionedRelation& Rpart,
 static JoinResult partitioned_hash_join(const std::vector<Record>& R,
                                         const std::vector<Record>& S,
                                         std::uint32_t p,
-                                        std::size_t partition_threads,
+                                        std::size_t part_threads,
                                         std::size_t join_threads) {
     JoinResult result{};
     (void)join_threads;
 
     // Phase 1: partition both relations
     double t0 = get_time();
-    const PartitionedRelation Rpart = partition_relation_parallel(R, p, partition_threads);
-    const PartitionedRelation Spart = partition_relation_parallel(S, p, partition_threads);
+    const PartitionedRelation Rpart = partition_relation_parallel(R, p, part_threads);
+    const PartitionedRelation Spart = partition_relation_parallel(S, p, part_threads);
     double t1 = get_time();
     result.part_time = t1 - t0;
 
