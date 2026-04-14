@@ -11,18 +11,22 @@ mkdir -p out err
 if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
     echo "Usage: $0 EXECUTABLE_NAME [REPEAT_COUNT(optional)] [GRID_CONFIG(optional)]"
     echo "  EXECUTABLE_NAME: make target to compile and benchmark (ex: hashjoin_sequential, hashjoin_parallel)"
+    echo "  GRID_CONFIG: shell file exporting benchmark arrays (default: $SCRIPT_DIR/grid/seq_grid_search.sh)"
     echo "  REPEAT_COUNT: positive integer (default: 1)"
-    echo "  GRID_CONFIG: shell file exporting benchmark arrays (default: $SCRIPT_DIR/runners/grid_search.sh)"
     exit 1
 fi
 
 EXECUTABLE_INPUT="$1"
 EXECUTABLE_TARGET="$(basename "$EXECUTABLE_INPUT")"
-REPEAT_COUNT="${2:-1}"
-GRID_CONFIG="${3:-$SCRIPT_DIR/runners/grid_search.sh}"
+GRID_CONFIG="$SCRIPT_DIR/$2"
+if [ $# -eq 2 ]; then
+    REPEAT_COUNT="1"
+else
+    REPEAT_COUNT="$3"
+fi
 
-if ! [[ "$REPEAT_COUNT" =~ ^[1-9][0-9]*$ ]]; then
-    echo "REPEAT_COUNT must be a positive integer, received: $REPEAT_COUNT"
+if ! [[ "$REPEAT_COUNT" -ge 1 ]]; then
+    echo "REPEAT_COUNT must be grather than 0, received: $REPEAT_COUNT"
     exit 1
 fi
 
@@ -37,13 +41,32 @@ fi
 
 source "$GRID_CONFIG"
 
+require_non_empty_array() {
+    local array_name="$1"
+    local array_len
+    local declaration
+
+    if [[ ! "$array_name" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        return 1
+    fi
+    if ! declaration="$(declare -p "$array_name" 2>/dev/null)"; then
+        return 1
+    fi
+    if [[ "$declaration" != declare\ -a* && "$declaration" != declare\ -A* ]]; then
+        return 1
+    fi
+
+    eval "array_len=\${#$array_name[@]}"
+    [ "$array_len" -gt 0 ]
+}
+
 if [ -z "${N_VALUE:-}" ] || [ -z "${P_VALUE:-}" ]; then
     echo "Grid configuration must define fixed N_VALUE and P_VALUE."
     exit 1
 fi
 
-if [ "${#SEED_VALUES[@]:-0}" -eq 0 ] || [ "${#MAX_KEY_VALUES[@]:-0}" -eq 0 ] || \
-   [ "${#PARTITION_THREAD_VALUES[@]:-0}" -eq 0 ] || [ "${#JOIN_THREAD_VALUES[@]:-0}" -eq 0 ]; then
+if ! require_non_empty_array "SEED_VALUES" || ! require_non_empty_array "MAX_KEY_VALUES" || \
+   ! require_non_empty_array "PARTITION_THREAD_VALUES" || ! require_non_empty_array "JOIN_THREAD_VALUES"; then
     echo "Grid configuration must define non-empty SEED_VALUES, MAX_KEY_VALUES, PARTITION_THREAD_VALUES and JOIN_THREAD_VALUES."
     exit 1
 fi
@@ -62,9 +85,10 @@ fi
 TOTAL=$(( ${#SEED_VALUES[@]} * ${#MAX_KEY_VALUES[@]} * ${#PARTITION_THREAD_VALUES[@]} * ${#JOIN_THREAD_VALUES[@]} * REPEAT_COUNT ))
 COUNT=0
 
-echo "Benchmark executable: $EXECUTABLE"
+echo "Benchmark executable: $EXECUTABLE_TARGET"
 echo "Grid source:          $GRID_CONFIG"
 echo "Fixed parameters:     N=$N_VALUE P=$P_VALUE"
+echo "Repeat count:         $REPEAT_COUNT"
 echo "Total runs:           $TOTAL"
 echo
 

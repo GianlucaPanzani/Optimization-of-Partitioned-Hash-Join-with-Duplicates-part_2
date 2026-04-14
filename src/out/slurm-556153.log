@@ -1,0 +1,2 @@
+Running on node: node09 (job: 556153)
+Command: /home/g.panzani/assignment2/Optimization-of-Partitioned-Hash-Join-with-Duplicates-part_2/src/hashjoin_sequential -nr 10000000 -ns 10000000 -seed 13 -max-key 65536 -p 256 --partition-threads 1 --join-threads 1
