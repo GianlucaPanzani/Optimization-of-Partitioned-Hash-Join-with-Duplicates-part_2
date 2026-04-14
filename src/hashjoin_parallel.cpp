@@ -591,7 +591,7 @@ int main(int argc, char** argv) {
         {"ns", std::to_string(NS)},
         {"time_sec", std::to_string(sec)}
     };
-    append_to_csv("results/hashjoin_sequential.csv", results_map);
+    append_to_csv("results/hashjoin_parallel.csv", results_map);
 
     return 0;
 }
