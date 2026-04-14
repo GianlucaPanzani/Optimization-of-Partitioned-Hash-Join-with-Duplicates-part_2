@@ -71,8 +71,12 @@ if ! require_non_empty_array "SEED_VALUES" || ! require_non_empty_array "MAX_KEY
     exit 1
 fi
 
+if ! make cleanall; then
+    echo "Cleaning not done"
+    exit 1
+fi
 mkdir -p compilation
-if ! make "$EXECUTABLE_TARGET"; then
+if ! make -B "$EXECUTABLE_TARGET"; then
     echo "Compilation failed or unknown make target: $EXECUTABLE_TARGET"
     exit 1
 fi

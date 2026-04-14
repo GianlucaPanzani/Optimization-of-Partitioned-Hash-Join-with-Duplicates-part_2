@@ -8,6 +8,7 @@ LIB_SOURCES    		=
 GCC_SEQ_REPORT  	= compilation/gcc_seq_report.txt
 GCC_PAR_REPORT		= compilation/gcc_par_report.txt
 LOG_FILES			= out/*.log err/*.log
+RESULTS_FILES		= results/*.csv
 
 
 .PHONY: all clean cleanlogs cleanall
@@ -29,5 +30,8 @@ clean:
 cleanlogs: clean
 	-rm -fr $(LOG_FILES)
 
-cleanall: clean
+cleanexceptres: clean
 	-rm -fr $(TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES)
+
+cleanall: clean
+	-rm -fr $(TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES) $(RESULTS_FILES)
