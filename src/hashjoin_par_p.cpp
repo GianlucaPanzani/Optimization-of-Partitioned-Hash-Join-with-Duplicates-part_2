@@ -697,7 +697,7 @@ int main(int argc, char** argv) {
         {"ns", std::to_string(NS)},
         {"time_sec", std::to_string(tot_time_sec)}
     };
-    append_to_csv("results/hashjoin_parallel.csv", results_map);
+    append_to_csv("results/hashjoin_par_p.csv", results_map);
 
     return 0;
 }
