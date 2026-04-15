@@ -77,6 +77,8 @@ elif [[ "$EXECUTABLE_TARGET" == "hashjoin_par_p" ]]; then
     make cleanall_par_p
 elif [[ "$EXECUTABLE_TARGET" == "hashjoin_par_pj" ]]; then
     make cleanall_par_pj
+elif [[ "$EXECUTABLE_TARGET" == "hashjoin_par_pj_wb" ]]; then
+    make cleanall_par_pj_wb
 else
     echo "Cleaning not done"
     exit 1

@@ -89,6 +89,8 @@
 #include <vector>
 
 #include "lib/timing.hpp"
+#include "lib/partition.hpp"
+#include "lib/results.hpp"
 
 // ------------------------------------------------------------
 // Record definition
@@ -136,69 +138,6 @@ static bool is_power_of_two(std::uint32_t x) {
     return x != 0 && (x & (x - 1U)) == 0;
 }
 
-static std::string escape_csv_field(const std::string& field) {
-    if (field.find_first_of(",\"\n\r") == std::string::npos) {
-        return field;
-    }
-
-    std::string escaped = "\"";
-    for (const char current : field) {
-        if (current == '"') {
-            escaped += "\"\"";
-        } else {
-            escaped.push_back(current);
-        }
-    }
-    escaped.push_back('"');
-    return escaped;
-}
-
-using ResultMap = std::map<std::string, std::string>;
-
-static void append_to_csv(const std::string& csv_path, const ResultMap& results) {
-    if (results.empty()) {
-        throw std::invalid_argument("results map cannot be empty");
-    }
-
-    const std::filesystem::path output_path(csv_path);
-    const std::filesystem::path parent = output_path.parent_path();
-    if (!parent.empty()) {
-        std::filesystem::create_directories(parent);
-    }
-
-    const bool needs_header = !std::filesystem::exists(output_path) || std::filesystem::file_size(output_path) == 0;
-
-    std::ofstream out(output_path, std::ios::app);
-    if (!out) {
-        throw std::runtime_error("Cannot open CSV file for writing: " + output_path.string());
-    }
-
-    if (needs_header) {
-        bool first = true;
-        for (const auto& entry : results) {
-            if (!first) {
-                out << ',';
-            }
-            out << escape_csv_field(entry.first);
-            first = false;
-        }
-        out << '\n';
-    }
-
-    bool first = true;
-    for (const auto& entry : results) {
-        if (!first) {
-            out << ',';
-        }
-        out << escape_csv_field(entry.second);
-        first = false;
-    }
-    out << '\n';
-
-    if (!out) {
-        throw std::runtime_error("Error while writing CSV file: " + output_path.string());
-    }
-}
 
 // ------------------------------------------------------------
 // Deterministic pseudo-random generation
@@ -252,7 +191,11 @@ static std::vector<Record> generate_relation(std::size_t n, std::uint64_t seed, 
 // This is fast, but intentionally simplistic.
 //
 static inline std::uint32_t compute_partition_id(std::uint64_t key, std::uint32_t P) {
-    return static_cast<std::uint32_t>(key & static_cast<std::uint64_t>(P - 1U));
+    const std::uint32_t mask = P - 1U;
+    key ^= key >> 33;
+    key ^= key >> 17;
+    key ^= key >> 9;
+    return static_cast<std::uint32_t>(key) & mask;
 }
 
 // ------------------------------------------------------------
@@ -470,12 +413,15 @@ static JoinResult partitioned_hash_join(const std::vector<Record>& R,
     result.part_time_sec = t1 - t0;
 
     // Phase 2 + 3: local joins and global reduction
+    t0 = get_time();
     for (std::uint32_t pid = 0; pid < p; ++pid) {
         const JoinResult local = join_one_partition(Rpart, Spart, pid);
         result.join_count += local.join_count;
         result.checksum1 += local.checksum1;
         result.checksum2 += local.checksum2;
     }
+    t1 = get_time();
+    result.join_time_sec = t1 - t0;
 
     return result;
 }
@@ -578,11 +524,16 @@ int main(int argc, char** argv) {
     }
 
     // Append results to csv file
+    const std::uint64_t total_elements = NR + NS;
+    const double part_throughput = compute_throughput(total_elements, result.part_time_sec);
+    const double join_throughput = compute_throughput(total_elements, result.join_time_sec);
     const ResultMap results_map = {
         {"checksum1", std::to_string(result.checksum1)},
         {"checksum2", std::to_string(result.checksum2)},
         {"join_count", std::to_string(result.join_count)},
+        {"join_throughput", std::to_string(join_throughput)},
         {"partition_time", std::to_string(result.part_time_sec)},
+        {"partition_throughput", std::to_string(part_throughput)},
         {"join_time", std::to_string(result.join_time_sec)},
         {"partition_threads", std::to_string(part_threads)},
         {"join_threads", std::to_string(join_threads)},
@@ -591,7 +542,8 @@ int main(int argc, char** argv) {
         {"ns", std::to_string(NS)},
         {"time_sec", std::to_string(tot_time_sec)}
     };
-    append_to_csv("results/hashjoin_sequential.csv", results_map);
+    const std::string filepath = "results/" + std::filesystem::path(argv[0]).stem().string() + ".csv";
+    append_to_csv(filepath, results_map);
 
     return 0;
 }

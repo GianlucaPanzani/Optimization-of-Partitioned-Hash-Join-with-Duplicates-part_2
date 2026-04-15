@@ -1,8 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=hashjoin_one
-#SBATCH --time=00:05:00
+#SBATCH --job-name=hashjoin
+#SBATCH --time=00:01:00
 #SBATCH --nodes=1
-#SBATCH --partition=gpu-shared
+#SBATCH --partition=normal
+#SBATCH --nodelist=node05
 #SBATCH --output=out/slurm-%j.log
 #SBATCH --error=err/slurm-%j.log
 

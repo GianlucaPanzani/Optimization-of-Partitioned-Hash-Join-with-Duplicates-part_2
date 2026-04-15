@@ -1,6 +1,6 @@
 CXX            			= g++
 CXXFLAGS       	    	= -std=c++17 -Wall -Wextra -I.
-OPTFLAGS       			= -O3 -pthread -march=native
+OPTFLAGS       			= -O3 -pthread
 AUTOFLAGS      			= -fopt-info-vec-optimized -fopt-info-vec-missed
 
 SEQ_TARGETS 			= hashjoin_seq
@@ -19,7 +19,7 @@ RES_PAR_PJ				= results/hashjoin_par_pj.csv
 RES_PAR_PJ_WB			= results/hashjoin_par_pj_wb.csv
 RESULTS_FILES			= results/*.csv
 
-LIB_SOURCES    			= lib/timing.cpp
+LIB_SOURCES    			= lib/timing.cpp lib/results.cpp lib/partition.cpp
 LOG_FILES				= out/*.log err/*.log
 
 
