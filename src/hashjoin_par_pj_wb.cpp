@@ -83,6 +83,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <queue>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -548,15 +549,37 @@ static JoinResult join_partitions(const PartitionedRelation& Rpart,
                                   std::size_t join_threads) {
     const std::size_t num_join_threads = std::max<std::size_t>(1, std::min<std::size_t>(join_threads, static_cast<std::size_t>(p)));
 
+    // Workload per partition: |R_p| + |S_p|.
+    std::vector<std::uint64_t> part_weight(p, 0);
+    for (std::uint32_t pid = 0; pid < p; ++pid) {
+        const std::uint64_t r_len = static_cast<std::uint64_t>(Rpart.end[pid] - Rpart.begin[pid]);
+        const std::uint64_t s_len = static_cast<std::uint64_t>(Spart.end[pid] - Spart.begin[pid]);
+        part_weight[pid] = r_len + s_len;
+    }
+
+    // Greedy assignment with min-heap: each partition goes to the least-loaded thread
+    using HeapEntry = std::pair<std::uint64_t, std::size_t>; // {load, thread_id}
+    std::priority_queue<HeapEntry, std::vector<HeapEntry>, std::greater<HeapEntry>> min_heap;
+    
+    std::vector<std::vector<std::uint32_t>> thread_partitions(num_join_threads);
+    for (std::size_t t = 0; t < num_join_threads; ++t) {
+        min_heap.push({0, t});
+    }
+
+    for (std::uint32_t pid = 0; pid < p; ++pid) {
+        const auto [current_load, target_thread] = min_heap.top();
+        min_heap.pop();
+        thread_partitions[target_thread].push_back(pid);
+        min_heap.push({current_load + part_weight[pid], target_thread});
+    }
+
     std::vector<JoinResult> partial_results(num_join_threads);
     std::vector<std::thread> workers;
     workers.reserve(num_join_threads);
     for (std::size_t t = 0; t < num_join_threads; ++t) {
         workers.emplace_back([&, t]() {
             JoinResult local{};
-            const std::uint32_t pid_begin = static_cast<std::uint32_t>((static_cast<std::uint64_t>(t) * p) / num_join_threads);
-            const std::uint32_t pid_end = static_cast<std::uint32_t>((static_cast<std::uint64_t>(t + 1) * p) / num_join_threads);
-            for (std::uint32_t pid = pid_begin; pid < pid_end; ++pid) {
+            for (const std::uint32_t pid : thread_partitions[t]) {
                 const JoinResult one = join_one_partition(Rpart, Spart, pid);
                 local.join_count += one.join_count;
                 local.checksum1 += one.checksum1;
@@ -576,7 +599,6 @@ static JoinResult join_partitions(const PartitionedRelation& Rpart,
         total.checksum1 += local.checksum1;
         total.checksum2 += local.checksum2;
     }
-
     return total;
 }
 
