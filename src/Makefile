@@ -7,16 +7,19 @@ SEQ_TARGETS 			= hashjoin_seq
 PAR_P_TARGETS 			= hashjoin_par_p
 PAR_PJ_TARGETS 			= hashjoin_par_pj
 PAR_PJ_WB_TARGETS 		= hashjoin_par_pj_wb
+PAR_PJ_WB_MAP_TARGETS	= hashjoin_par_pj_wb_map
 
 GCC_SEQ_REPORT  		= compilation/gcc_seq_report.txt
 GCC_PAR_P_REPORT		= compilation/gcc_par_p_report.txt
 GCC_PAR_PJ_REPORT		= compilation/gcc_par_pj_report.txt
 GCC_PAR_PJ_WB_REPORT	= compilation/gcc_par_pj_wb_report.txt
+GCC_PAR_PJ_WB_MAP_REPORT= compilation/gcc_par_pj_wb_map_report.txt
 
 RES_SEQ					= results/hashjoin_seq.csv
 RES_PAR_P				= results/hashjoin_par_p.csv
 RES_PAR_PJ				= results/hashjoin_par_pj.csv
 RES_PAR_PJ_WB			= results/hashjoin_par_pj_wb.csv
+RES_PAR_PJ_WB_MAP			= results/hashjoin_par_pj_wb_map.csv
 RESULTS_FILES			= results/*.csv
 
 LIB_SOURCES    			= lib/timing.cpp lib/results.cpp lib/partition.cpp
@@ -49,13 +52,16 @@ cleanall_seq: clean
 	-rm -fr $(SEQ_TARGETS) $(GCC_SEQ_REPORT) $(LOG_FILES) $(RES_SEQ)
 
 cleanall_par_p: clean
-	-rm -fr $(PAR_P_TARGETS) $(GCC_PAR_REPORT) $(LOG_FILES) $(RES_PAR_P)
+	-rm -fr $(PAR_P_TARGETS) $(GCC_PAR_P_REPORT) $(LOG_FILES) $(RES_PAR_P)
 
 cleanall_par_pj: clean
-	-rm -fr $(PAR_PJ_TARGETS) $(GCC_PAR_REPORT) $(LOG_FILES) $(RES_PAR_PJ)
+	-rm -fr $(PAR_PJ_TARGETS) $(GCC_PAR_PJ_REPORT) $(LOG_FILES) $(RES_PAR_PJ)
 
 cleanall_par_pj_wb: clean
-	-rm -fr $(PAR_PJ_WB_TARGETS) $(GCC_PAR_REPORT) $(LOG_FILES) $(RES_PAR_PJ_WB)
+	-rm -fr $(PAR_PJ_WB_TARGETS) $(GCC_PAR_PJ_WB_REPORT) $(LOG_FILES) $(RES_PAR_PJ_WB)
+
+cleanall_par_pj_wb_map: clean
+	-rm -fr $(PAR_PJ_WB_MAP_TARGETS) $(GCC_PAR_PJ_WB_MAP_REPORT) $(LOG_FILES) $(RES_PAR_PJ_WB_MAP)
 
 cleanall: clean
 	-rm -fr $(SEQ_TARGETS) $(PAR_TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES) $(RESULTS_FILES)
