@@ -339,8 +339,9 @@ static PartitionedRelation partition_relation_parallel(const std::vector<Record>
     std::size_t cursor = 0;
     std::vector<std::thread> workers;
     workers.reserve(num_threads);
-    // Vector of vectors of counters (each element [t][id] is the number of occurrences of the partition ID "id" in chunck "t")
-    std::vector<std::vector<std::size_t>> local_partition_counter(num_threads, std::vector<std::size_t>(P, 0));
+    const std::size_t p_size = static_cast<std::size_t>(P);
+    // Flat layout [thread][partition_id] for better locality and lower allocation overhead.
+    std::vector<std::size_t> local_partition_counter(num_threads * p_size, 0);
     for (std::size_t t = 0; t < num_threads; ++t) {
         const std::size_t span = base + ((t < rem) ? 1 : 0);
         chunk_begin[t] = cursor;
@@ -349,7 +350,7 @@ static PartitionedRelation partition_relation_parallel(const std::vector<Record>
         
         // thread execution
         workers.emplace_back([&, t]() {
-            auto& hist = local_partition_counter[t];
+            std::size_t* hist = local_partition_counter.data() + (t * p_size);
             for (std::size_t i = chunk_begin[t]; i < chunk_end[t]; ++i) {
                 const std::uint32_t pid = compute_partition_id(data[i].key, P);
                 ++hist[pid];
@@ -363,21 +364,23 @@ static PartitionedRelation partition_relation_parallel(const std::vector<Record>
     // Reduce local histograms into global histogram
     std::vector<std::size_t> hist(P, 0);
     for (std::size_t t = 0; t < num_threads; ++t) {
+        const std::size_t* local_hist = local_partition_counter.data() + (t * p_size);
         for (std::uint32_t pid = 0; pid < P; ++pid) {
-            hist[pid] += local_partition_counter[t][pid];
+            hist[pid] += local_hist[pid];
         }
     }
 
     // Phase 2: global exclusive prefix sum (compute per-thread write offsets for each partition)
     const std::vector<std::size_t> begin = exclusive_prefix_sum(hist);
     std::vector<std::size_t> end(P, 0);
-    std::vector<std::vector<std::size_t>> thread_offsets(num_threads, std::vector<std::size_t>(P, 0));
+    std::vector<std::size_t> thread_offsets(num_threads * p_size, 0);
     for (std::uint32_t pid = 0; pid < P; ++pid) {
         std::size_t off = begin[pid];
         end[pid] = begin[pid] + hist[pid];
         for (std::size_t t = 0; t < num_threads; ++t) {
-            thread_offsets[t][pid] = off;
-            off += local_partition_counter[t][pid];
+            const std::size_t base_idx = t * p_size;
+            thread_offsets[base_idx + pid] = off;
+            off += local_partition_counter[base_idx + pid];
         }
     }
 
@@ -387,12 +390,10 @@ static PartitionedRelation partition_relation_parallel(const std::vector<Record>
     workers.reserve(num_threads);
     for (std::size_t t = 0; t < num_threads; ++t) {
         workers.emplace_back([&, t]() {
-            std::vector<std::size_t> next = thread_offsets[t];
+            std::size_t* next = thread_offsets.data() + (t * p_size);
             for (std::size_t i = chunk_begin[t]; i < chunk_end[t]; ++i) {
-                const Record record = data[i];
-                const std::uint32_t pid = compute_partition_id(record.key, P);
-                out[next[pid]] = record;
-                next[pid]++;
+                const std::uint32_t pid = compute_partition_id(data[i].key, P);
+                out[next[pid]++] = data[i];
             }
         });
     }

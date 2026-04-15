@@ -1,0 +1,2 @@
+checksum1,checksum2,join_count,join_threads,join_throughput,join_time,max_key,nr,ns,partition_threads,partition_throughput,partition_time,time_sec,total_throughput
+17761779669907186848,18245323966585418328,9536796192,32,555574074.674292,0.179994,262144,50000000,50000000,32,673297148.804477,0.148523,0.328519,304396550.953655
