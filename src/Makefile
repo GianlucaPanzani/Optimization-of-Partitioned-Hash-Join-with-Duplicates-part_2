@@ -19,10 +19,10 @@ RES_SEQ					= results/hashjoin_seq.csv
 RES_PAR_P				= results/hashjoin_par_p.csv
 RES_PAR_PJ				= results/hashjoin_par_pj.csv
 RES_PAR_PJ_WB			= results/hashjoin_par_pj_wb.csv
-RES_PAR_PJ_WB_MAP			= results/hashjoin_par_pj_wb_map.csv
+RES_PAR_PJ_WB_MAP		= results/hashjoin_par_pj_wb_map.csv
 RESULTS_FILES			= results/*.csv
 
-LIB_SOURCES    			= lib/timing.cpp lib/results.cpp lib/partition.cpp
+LIB_SOURCES    			= lib/timing.cpp lib/results.cpp
 LOG_FILES				= out/*.log err/*.log
 
 

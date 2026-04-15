@@ -1,0 +1,199 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage[hypertexnames=false]{hyperref}
+
+\title{Optimization of Partitioned Hash Join with Duplicates}
+\author{Gianluca Panzani}
+\date{\today}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+\newcommand{\imageplaceholder}[2]{%
+    \IfFileExists{#1}{%
+        \includegraphics[width=#2]{#1}%
+    }{%
+        \fbox{%
+            \parbox[c][0.22\textheight][c]{#2}{%
+                \centering
+                Placeholder for\\
+                \texttt{\detokenize{#1}}%
+            }%
+        }%
+    }%
+}
+
+\begin{document}
+\begin{titlepage}
+    \centering
+    {\Large University of Pisa\par}
+    \vspace{0.6cm}
+    {\large Parallel and Distributed Systems\par}
+    \vspace{2.0cm}
+    {\LARGE \textbf{Optimization of Partitioned Hash Join with Duplicates}\par}
+    \vspace{1.2cm}
+    {\large Assignment 2 - Report\par}
+    \vfill
+    {\large Gianluca Panzani\par}
+    \vspace{0.3cm}
+    {\large \today\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Introduction and Goals}
+This report documents the second module of the project, whose goal is to move from the partition-mapping kernel of Module 1 to a complete partitioned hash join with duplicates. According to the assignment brief, the work has four main objectives:
+\begin{itemize}
+    \item implement a correct sequential reference of the full join pipeline;
+    \item design one or more parallel versions using C++ threads while preserving the overall algorithmic structure;
+    \item validate correctness through the final outputs, namely \texttt{join\_count}, \texttt{checksum1}, and \texttt{checksum2};
+    \item evaluate performance through speedup, strong scalability, weak scalability, and phase-level observations.
+\end{itemize}
+
+The current project already contains multiple executable variants, so this draft focuses on organizing the report around the Module 2 requirements rather than around the Module 1 structure. Figures in the next sections are left as explicit placeholders and will be replaced with the final plots generated from the benchmark CSV files.
+
+\section{Implementation}
+\subsection{End-to-end pipeline}
+All implementations follow the same high-level pipeline required by the assignment:
+\begin{enumerate}
+    \item generate two deterministic relations \texttt{R} and \texttt{S};
+    \item partition both relations using the mapping function inherited from Module 1;
+    \item for each partition, build a lookup/count structure on the corresponding slice of \texttt{R};
+    \item probe the corresponding slice of \texttt{S} and accumulate matches with duplicate multiplicities;
+    \item reduce the partial results into the final \texttt{join\_count}, \texttt{checksum1}, and \texttt{checksum2}.
+\end{enumerate}
+
+The partitioning stage keeps the standard three-phase structure of histogram, prefix sum, and scatter. This is important because the assignment explicitly asks to keep the algorithm recognizable while exploring where parallelism is worthwhile and where it is not.
+
+\subsection{Implemented variants}
+The codebase contains the following executables:
+\begin{itemize}
+    \item \texttt{hashjoin\_seq}: sequential baseline used as correctness reference and speedup denominator;
+    \item \texttt{hashjoin\_par\_p}: parallel partitioning, sequential join;
+    \item \texttt{hashjoin\_par\_pj}: parallel partitioning and parallel join, with contiguous partition ranges assigned to join threads;
+    \item \texttt{hashjoin\_par\_pj\_wb}: same as the previous version, but with workload-balanced assignment of partitions to join threads;
+    \item \texttt{hashjoin\_par\_pj\_wb\_map}: most optimized variant in this repository, combining workload balancing with flatter data structures for counters/offsets and a custom flat count table in the join build phase.
+\end{itemize}
+
+This progression is useful for the report because it supports a step-by-step analysis: first parallelizing the partition stage, then the join stage, then improving load balance, and finally reducing data-structure overheads in the hottest parts of the computation.
+
+\subsection{Parallelization strategy}
+The main source of parallelism is phase decomposition over independent chunks and partitions.
+
+For partitioning, the relation is split into disjoint chunks. Each thread computes a local histogram, the local histograms are reduced into a global histogram, and then the scatter phase uses thread-local offsets so that no atomics are required in the hot loop.
+
+For the join stage, partitions can be processed independently after partitioning is complete. The simplest parallel version distributes contiguous partition ranges to threads, while the workload-balanced versions estimate per-partition cost through \(|R_p| + |S_p|\) and greedily assign heavier partitions to the least-loaded worker.
+
+\subsection{Experimental setup and reproducibility}
+The experiments are automated through the scripts in \texttt{src/}. The benchmark driver compiles one executable at a time, reads the chosen grid file, and submits runs through Slurm. Each execution appends a row to \texttt{results/<executable>.csv} with:
+\begin{itemize}
+    \item input size and configuration parameters;
+    \item partition and join thread counts;
+    \item partition, join, and total execution times;
+    \item derived throughputs;
+    \item correctness outputs (\texttt{join\_count}, \texttt{checksum1}, \texttt{checksum2}).
+\end{itemize}
+
+At the moment the automation targets a single cluster node through \texttt{run\_with\_slurm.sh}. Before final submission, the report should explicitly state the exact node and software configuration used for the final measurements.
+
+\section{Correctness}
+\subsection{Validation methodology}
+The assignment requires the sequential and parallel versions to produce the same final outputs. In this project, correctness is validated at two levels:
+\begin{itemize}
+    \item for very small inputs, the code executes a naive \(O(|R|\cdot|S|)\) verifier to cross-check the join result directly;
+    \item for realistic benchmark sizes, correctness is checked by comparing \texttt{join\_count}, \texttt{checksum1}, and \texttt{checksum2} across all executable variants.
+\end{itemize}
+
+This separation is aligned with the Module 2 brief: strong checks are used only on tiny inputs, while the measured region remains focused on the actual join pipeline.
+
+\subsection{What should be reported}
+In the final version of the report, this section should include a compact summary showing that all implementations agree on the output values for the same inputs. It is also useful to mention that correctness checks are performed outside the performance-critical discussion, so they do not dominate the reported timings.
+
+\begin{figure}[H]
+    \centering
+    \imageplaceholder{../img/module2_correctness_summary.png}{0.68\linewidth}
+    \caption{Placeholder for the correctness summary across all executable variants.}
+    \label{fig:module2-correctness}
+\end{figure}
+
+\section{Performance Evaluation}
+\subsection{Metrics}
+The Module 2 brief explicitly asks for speedup, strong scalability, and weak scalability. The available CSV files already contain the timing components needed to compute these metrics:
+\begin{itemize}
+    \item \texttt{partition\_time};
+    \item \texttt{join\_time};
+    \item \texttt{time\_sec};
+    \item derived throughputs for partition, join, and total execution.
+\end{itemize}
+
+The sequential executable should be used as the baseline for global speedup, while the variant progression inside the parallel family can be used to isolate the benefit of each design choice.
+
+\subsection{Strong scalability}
+Strong scalability should keep the problem size fixed and vary the number of threads. In this project, this analysis is especially relevant for:
+\begin{itemize}
+    \item partition-only scaling in \texttt{hashjoin\_par\_p};
+    \item join-stage scaling in \texttt{hashjoin\_par\_pj}, \texttt{hashjoin\_par\_pj\_wb}, and \texttt{hashjoin\_par\_pj\_wb\_map};
+    \item total end-to-end speedup against \texttt{hashjoin\_seq}.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \imageplaceholder{../img/module2_speedup_total.png}{0.32\linewidth}\hfill
+    \imageplaceholder{../img/module2_strong_scaling_partition.png}{0.32\linewidth}\hfill
+    \imageplaceholder{../img/module2_strong_scaling_join.png}{0.32\linewidth}
+    \caption{Placeholders for total speedup and strong-scaling plots of the partition and join phases.}
+    \label{fig:module2-strong-scaling}
+\end{figure}
+
+This section should discuss not only the best speedup obtained, but also where scalability starts to flatten. The assignment explicitly asks for reasoning about where parallelism is effective and where it is not, so the curves should be interpreted phase by phase rather than only as a single total number.
+
+\subsection{Weak scalability}
+Weak scalability should increase the input size together with the number of threads so that the work per thread remains approximately stable. This analysis is useful to understand whether the implementation remains efficient when the problem size grows, especially in the presence of partition skew and duplicate-heavy workloads.
+
+\begin{figure}[H]
+    \centering
+    \imageplaceholder{../img/module2_weak_scaling.png}{0.68\linewidth}
+    \caption{Placeholder for the weak-scaling results of the parallel variants.}
+    \label{fig:module2-weak-scaling}
+\end{figure}
+
+\subsection{Phase breakdown}
+Because the algorithm is composed of distinct phases with different computational and memory behavior, a phase breakdown is particularly important in this assignment. The project already measures partition time and join time separately, so the final report should show how the relative weight of these phases changes across implementations and thread counts.
+
+\begin{figure}[H]
+    \centering
+    \imageplaceholder{../img/module2_phase_breakdown.png}{0.68\linewidth}
+    \caption{Placeholder for the phase breakdown of partition time, join time, and total time.}
+    \label{fig:module2-phase-breakdown}
+\end{figure}
+
+\section{Discussion}
+The central discussion of the final report should answer the questions raised by the brief:
+\begin{itemize}
+    \item which phases benefit the most from parallelization;
+    \item where synchronization, memory traffic, or imbalance limit scalability;
+    \item how much improvement comes from better scheduling versus better data structures;
+    \item whether the most optimized version improves only throughput or also scalability quality.
+\end{itemize}
+
+Based on the current code organization, the expected qualitative comparison is the following:
+\begin{itemize}
+    \item \texttt{hashjoin\_par\_p} isolates the value of parallel partitioning;
+    \item \texttt{hashjoin\_par\_pj} shows the benefit of adding parallel join processing;
+    \item \texttt{hashjoin\_par\_pj\_wb} highlights the effect of balancing uneven partition workloads;
+    \item \texttt{hashjoin\_par\_pj\_wb\_map} measures the impact of reducing pointer chasing and allocation overhead in the hottest structures.
+\end{itemize}
+
+This section will become stronger once the final plots are added, because it can directly connect the shape of the scalability curves to the design choices implemented in each executable.
+
+\section{Conclusions}
+This draft reorganizes the report around the actual goals of Module 2: a correct sequential baseline, multiple parallel designs with C++ threads, correctness validation through final outputs, and an explicit study of speedup plus strong/weak scalability.
+
+The next step is to fill the placeholders with plots generated from the benchmark CSV files and to complete the discussion with the measured results obtained on the target SPM cluster node.
+
+\end{document}

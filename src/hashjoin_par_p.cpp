@@ -90,7 +90,6 @@
 #include <vector>
 
 #include "lib/timing.hpp"
-#include "lib/partition.hpp"
 #include "lib/results.hpp"
 
 // ------------------------------------------------------------

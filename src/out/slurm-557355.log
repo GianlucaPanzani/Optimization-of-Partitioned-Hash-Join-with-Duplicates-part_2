@@ -1,9 +1,0 @@
-Running on node: node05 (job: 557355)
-Command: /home/g.panzani/assignment2/Optimization-of-Partitioned-Hash-Join-with-Duplicates-part_2/src/hashjoin_par_pj_wb_map -nr 50000000 -ns 50000000 -seed 13 -max-key 65536 -p 256 --partition-threads 64 --join-threads 4
-NR=50000000 NS=50000000 P=256 seed=13 partition_threads=64 join_threads=4 [0, 65536)
-join_count=38147013639
-checksum1=15384239832666499847
-checksum2=2938791386226452392
-part_time_sec=0.369739
-join_time_sec=0.244150
-tot_time_sec=0.616937
