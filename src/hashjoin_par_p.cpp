@@ -629,12 +629,14 @@ int main(int argc, char** argv) {
     const std::uint64_t total_elements = NR + NS;
     const double part_throughput = compute_throughput(total_elements, result.part_time);
     const double join_throughput = compute_throughput(total_elements, result.join_time);
+    const double total_throughput = compute_throughput(total_elements, tot_time_sec);
 
     const ResultMap results_map = {
         {"checksum1", std::to_string(result.checksum1)},
         {"checksum2", std::to_string(result.checksum2)},
         {"join_count", std::to_string(result.join_count)},
         {"join_throughput", std::to_string(join_throughput)},
+        {"total_throughput", std::to_string(total_throughput)},
         {"partition_time", std::to_string(result.part_time)},
         {"partition_throughput", std::to_string(part_throughput)},
         {"join_time", std::to_string(result.join_time)},
