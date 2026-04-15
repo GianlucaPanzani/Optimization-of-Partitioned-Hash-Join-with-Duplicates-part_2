@@ -427,7 +427,7 @@ public:
     explicit FlatCountTable(std::size_t expected_items) {
         // Round up to power of 2
         const std::size_t min_capacity = expected_items * 2;
-        auto x = std::max<std::size_t>(8, min_capacity)
+        auto x = std::max<std::size_t>(8, min_capacity);
         std::size_t v = 1;
         while (v < x) {
             v <<= 1;

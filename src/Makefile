@@ -42,6 +42,9 @@ hashjoin_par_pj: hashjoin_par_pj.cpp $(LIB_SOURCES)
 hashjoin_par_pj_wb: hashjoin_par_pj_wb.cpp $(LIB_SOURCES)
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_par_pj_wb.cpp $(LIB_SOURCES) 2> $(GCC_PAR_PJ_WB_REPORT)
 
+hashjoin_par_pj_wb_map: hashjoin_par_pj_wb_map.cpp $(LIB_SOURCES)
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_par_pj_wb_map.cpp $(LIB_SOURCES) 2> $(GCC_PAR_PJ_WB_MAP_REPORT)
+
 clean:
 	-rm -fr *.o *~
 
