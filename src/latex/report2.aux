@@ -2,28 +2,31 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
-\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction and Goals}{1}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Implementation}{1}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}End-to-end pipeline}{1}{subsection.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Implemented variants}{1}{subsection.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Parallelization strategy}{2}{subsection.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Experimental setup and reproducibility}{2}{subsection.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Correctness}{2}{section.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Validation methodology}{2}{subsection.14}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}What should be reported}{2}{subsection.15}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Placeholder for the correctness summary across all executable variants.}}{3}{figure.16}\protected@file@percent }
-\newlabel{fig:module2-correctness}{{1}{3}{Placeholder for the correctness summary across all executable variants}{figure.16}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Performance Evaluation}{3}{section.17}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Metrics}{3}{subsection.18}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Strong scalability}{3}{subsection.19}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Placeholders for total speedup and strong-scaling plots of the partition and join phases.}}{4}{figure.20}\protected@file@percent }
-\newlabel{fig:module2-strong-scaling}{{2}{4}{Placeholders for total speedup and strong-scaling plots of the partition and join phases}{figure.20}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Weak scalability}{4}{subsection.21}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Placeholder for the weak-scaling results of the parallel variants.}}{5}{figure.22}\protected@file@percent }
-\newlabel{fig:module2-weak-scaling}{{3}{5}{Placeholder for the weak-scaling results of the parallel variants}{figure.22}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Phase breakdown}{5}{subsection.23}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Placeholder for the phase breakdown of partition time, join time, and total time.}}{5}{figure.24}\protected@file@percent }
-\newlabel{fig:module2-phase-breakdown}{{4}{5}{Placeholder for the phase breakdown of partition time, join time, and total time}{figure.24}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{5}{section.25}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusions}{6}{section.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Implementation}{1}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Hash Function Choice}{1}{subsection.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Benchmark}{1}{subsection.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Checker}{2}{subsection.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Parallelization Strategy}{2}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results Analysis}{2}{section.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Join and Partition Time}{3}{subsection.15}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Total execution-time (\texttt  {time\_sec}) matrix for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\).}}{3}{figure.16}\protected@file@percent }
+\newlabel{fig:time-sec-matrix}{{1}{3}{Total execution-time (\texttt {time\_sec}) matrix for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\)}{figure.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Partition-time and join-time matrices for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\).}}{3}{figure.17}\protected@file@percent }
+\newlabel{fig:times-matrices}{{2}{3}{Partition-time and join-time matrices for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\)}{figure.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Strong Scaling}{4}{subsection.18}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Partition-throughput matrix under fixed problem size.}}{4}{figure.19}\protected@file@percent }
+\newlabel{fig:strong-partition}{{3}{4}{Partition-throughput matrix under fixed problem size}{figure.19}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Join-throughput matrix under fixed problem size.}}{4}{figure.20}\protected@file@percent }
+\newlabel{fig:strong-join}{{4}{4}{Join-throughput matrix under fixed problem size}{figure.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Standard deviation of \texttt  {join\_time}.}}{5}{figure.21}\protected@file@percent }
+\newlabel{fig:std-join-wrap}{{5}{5}{Standard deviation of \texttt {join\_time}}{figure.21}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Weak Scaling}{5}{subsection.22}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Total throughput matrix used as weak-scaling proxy under fixed \(N\).}}{5}{figure.23}\protected@file@percent }
+\newlabel{fig:weak-proxy}{{6}{5}{Total throughput matrix used as weak-scaling proxy under fixed \(N\)}{figure.23}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Speedup}{5}{subsection.24}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Total speedup matrix over thread combinations and variants.}}{6}{figure.25}\protected@file@percent }
+\newlabel{fig:speedup}{{7}{6}{Total speedup matrix over thread combinations and variants}{figure.25}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Best observed configuration per executable (baseline: sequential mean total time).}}{6}{table.26}\protected@file@percent }
+\newlabel{tab:best-speedups}{{1}{6}{Best observed configuration per executable (baseline: sequential mean total time)}{table.26}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusions}{6}{section.27}\protected@file@percent }
 \gdef \@abspage@last{8}
