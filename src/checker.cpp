@@ -62,19 +62,15 @@ int main(int argc, char** argv) {
 
         if (current_content != reference_content) {
             all_equal = false;
-            std::cerr << "[checker] mismatch: "
-                      << files[i].filename().string()
-                      << " differs from "
-                      << files.front().filename().string()
-                      << '\n';
+            std::cerr << "[checker] mismatch: " << files[i].filename().string() << " differs from " << files.front().filename().string() << '\n';
         }
     }
 
     // Result
     if (!all_equal) {
-        std::cout << "[checker] output files are NOT identical\n";
+        std::cout << "[checker] NO --> output files are NOT identical\n";
     } else {
-        std::cout << "[checker] all " << files.size() << " output files have the same content\n";
+        std::cout << "[checker] OK --> all " << files.size() << " output files have the same content\n";
     }
     return 0;
 }

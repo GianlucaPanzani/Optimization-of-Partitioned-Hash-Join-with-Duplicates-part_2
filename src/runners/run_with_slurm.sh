@@ -35,9 +35,6 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-echo "Running on node: ${SLURMD_NODENAME:-unknown} (job: ${SLURM_JOB_ID:-n/a})"
-echo "Command: $EXECUTABLE -nr $NR -ns $NS -seed $SEED -max-key $MAX_KEY -p $P --partition-threads $PARTITION_THREADS --join-threads $JOIN_THREADS"
-
 "$EXECUTABLE" \
     -nr "$NR" \
     -ns "$NS" \
