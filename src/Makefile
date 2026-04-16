@@ -9,6 +9,7 @@ PAR_PJ_TARGETS 			= hashjoin_par_pj
 PAR_PJ_WB_TARGETS 		= hashjoin_par_pj_wb
 PAR_PJ_WB_MAP_TARGETS	= hashjoin_par_pj_wb_map
 WEAK_SCALING_TARGETS 	= weak_scaling
+TARGETS					= hashjoin_* weak_scaling
 
 GCC_SEQ_REPORT  		= compilation/gcc_seq_report.txt
 GCC_PAR_P_REPORT		= compilation/gcc_par_p_report.txt
@@ -16,6 +17,7 @@ GCC_PAR_PJ_REPORT		= compilation/gcc_par_pj_report.txt
 GCC_PAR_PJ_WB_REPORT	= compilation/gcc_par_pj_wb_report.txt
 GCC_PAR_PJ_WB_MAP_REPORT= compilation/gcc_par_pj_wb_map_report.txt
 GCC_WEAK_SCALING_REPORT = compilation/gcc_weak_scaling_report.txt
+GCC_REPORTS				= compilation/gcc_*_report.txt
 
 RES_SEQ					= results/hashjoin_seq.csv
 RES_PAR_P				= results/hashjoin_par_p.csv
@@ -79,4 +81,4 @@ cleanall_weak_scaling: clean
 	-rm -fr $(WEAK_SCALING_TARGETS) $(GCC_WEAK_SCALING_REPORT) $(LOG_FILES) $(RES_WEAK_SCALING)
 
 cleanall: clean
-	-rm -fr $(SEQ_TARGETS) $(PAR_TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES) $(RESULTS_FILES)
+	-rm -fr $(TARGETS) $(GCC_REPORTS) $(LOG_FILES) $(RESULTS_FILES)
