@@ -8,18 +8,21 @@ PAR_P_TARGETS 			= hashjoin_par_p
 PAR_PJ_TARGETS 			= hashjoin_par_pj
 PAR_PJ_WB_TARGETS 		= hashjoin_par_pj_wb
 PAR_PJ_WB_MAP_TARGETS	= hashjoin_par_pj_wb_map
+WEAK_SCALING_TARGETS 	= weak_scaling
 
 GCC_SEQ_REPORT  		= compilation/gcc_seq_report.txt
 GCC_PAR_P_REPORT		= compilation/gcc_par_p_report.txt
 GCC_PAR_PJ_REPORT		= compilation/gcc_par_pj_report.txt
 GCC_PAR_PJ_WB_REPORT	= compilation/gcc_par_pj_wb_report.txt
 GCC_PAR_PJ_WB_MAP_REPORT= compilation/gcc_par_pj_wb_map_report.txt
+GCC_WEAK_SCALING_REPORT = compilation/gcc_weak_scaling_report.txt
 
 RES_SEQ					= results/hashjoin_seq.csv
 RES_PAR_P				= results/hashjoin_par_p.csv
 RES_PAR_PJ				= results/hashjoin_par_pj.csv
 RES_PAR_PJ_WB			= results/hashjoin_par_pj_wb.csv
 RES_PAR_PJ_WB_MAP		= results/hashjoin_par_pj_wb_map.csv
+RES_WEAK_SCALING		= results/weak_scaling.csv
 RESULTS_FILES			= results/*.csv
 
 LIB_SOURCES    			= lib/timing.cpp lib/results.cpp
@@ -48,6 +51,9 @@ hashjoin_par_pj_wb: hashjoin_par_pj_wb.cpp $(LIB_SOURCES)
 hashjoin_par_pj_wb_map: hashjoin_par_pj_wb_map.cpp $(LIB_SOURCES)
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_par_pj_wb_map.cpp $(LIB_SOURCES) 2> $(GCC_PAR_PJ_WB_MAP_REPORT)
 
+weak_scaling: weak_scaling.cpp
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ weak_scaling.cpp $(LIB_SOURCES) 2> $(GCC_WEAK_SCALING_REPORT)
+
 clean:
 	-rm -fr *.o *~
 
@@ -68,6 +74,9 @@ cleanall_par_pj_wb: clean
 
 cleanall_par_pj_wb_map: clean
 	-rm -fr $(PAR_PJ_WB_MAP_TARGETS) $(GCC_PAR_PJ_WB_MAP_REPORT) $(LOG_FILES) $(RES_PAR_PJ_WB_MAP)
+
+cleanall_weak_scaling: clean
+	-rm -fr $(WEAK_SCALING_TARGETS) $(GCC_WEAK_SCALING_REPORT) $(LOG_FILES) $(RES_WEAK_SCALING_MAP)
 
 cleanall: clean
 	-rm -fr $(SEQ_TARGETS) $(PAR_TARGETS) $(GCC_SEQ_REPORT) $(GCC_PAR_REPORT) $(LOG_FILES) $(RESULTS_FILES)
