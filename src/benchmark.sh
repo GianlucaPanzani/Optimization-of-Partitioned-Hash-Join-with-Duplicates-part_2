@@ -134,3 +134,8 @@ for ((RUN_INDEX=1; RUN_INDEX<=REPEAT_COUNT; RUN_INDEX++)); do
         done
     done
 done
+
+make checker
+./checker
+
+make clean

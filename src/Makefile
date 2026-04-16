@@ -30,6 +30,9 @@ LOG_FILES				= out/*.log err/*.log
 
 all: $(TARGETS)
 
+checker: checker.cpp
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $@ checker.cpp
+
 hashjoin_seq: hashjoin_seq.cpp $(LIB_SOURCES)
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) $(AUTOFLAGS) -o $@ hashjoin_seq.cpp $(LIB_SOURCES) 2> $(GCC_SEQ_REPORT)
 

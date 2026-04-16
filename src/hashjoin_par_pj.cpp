@@ -637,20 +637,10 @@ int main(int argc, char** argv) {
     double t1 = get_time();
     const double tot_time_sec = t1 - t0;
     
-    std::cout << "NR=" << NR 
-            << " NS=" << NS 
-            << " P=" << P
-			<< " seed=" << seed
-            << " partition_threads=" << part_threads
-            << " join_threads=" << join_threads
-            << " [0, " << max_key << ")\n";
+    // Resulted output
     std::cout << "join_count=" << result.join_count << "\n";
     std::cout << "checksum1=" << result.checksum1 << "\n";
     std::cout << "checksum2=" << result.checksum2 << "\n";
-    std::cout << std::fixed << std::setprecision(6);
-    std::cout << "part_time_sec=" << result.part_time << "\n";
-    std::cout << "join_time_sec=" << result.join_time << "\n";
-    std::cout << "tot_time_sec=" << tot_time_sec << "\n";
 
     //Tiny debug check, only for very small datasets
     if (NR <= 500 && NS <= 500) {
