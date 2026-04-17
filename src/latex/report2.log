@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.12.28)  16 APR 2026 16:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.12.28)  17 APR 2026 10:52
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -350,6 +350,12 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 
 
 [1]
+Overfull \hbox (2.49551pt too wide) in paragraph at lines 41--42
+[]\OT1/cmtt/m/n/10.95 hashjoin[]par[]pj.cpp\OT1/cmr/m/n/10.95 : par-al-lel par-
+ti-tion + par-al-lel join (with con-tigu-ous par-ti-tion ranges); 
+ []
+
+
 
 [1{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
 }]
@@ -388,93 +394,75 @@ File: ../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey100000
 .png>
 Package pdftex.def Info: ../img/007_partition_throughput_matrix_nr50000000_ns50
 000000_maxkey1000000.png  used on input line 141.
-(pdftex.def)             Requested size: 317.07614pt x 266.83774pt.
-
-
-[3 <../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img
-/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img/003
-_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png>]
+(pdftex.def)             Requested size: 221.95676pt x 186.79521pt.
 <../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png, id=
-108, 1380.7585pt x 1153.911pt>
+98, 1380.7585pt x 1153.911pt>
 File: ../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
  Graphic file (type png)
 <use ../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png>
 
 Package pdftex.def Info: ../img/008_join_throughput_matrix_nr50000000_ns5000000
-0_maxkey1000000.png  used on input line 148.
-(pdftex.def)             Requested size: 317.07614pt x 264.97137pt.
+0_maxkey1000000.png  used on input line 142.
+(pdftex.def)             Requested size: 221.95676pt x 185.47467pt.
+
+
+[3 <../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img
+/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img/003
+_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png>]
 <../img/004_std_join_time_by_max_key.png, id=109, 584.584pt x 339.2675pt>
 File: ../img/004_std_join_time_by_max_key.png Graphic file (type png)
 <use ../img/004_std_join_time_by_max_key.png>
 Package pdftex.def Info: ../img/004_std_join_time_by_max_key.png  used on input
- line 158.
-(pdftex.def)             Requested size: 135.89174pt x 78.86334pt.
+ line 151.
+(pdftex.def)             Requested size: 190.24568pt x 110.41075pt.
 
-Underfull \hbox (badness 1072) in paragraph at lines 159--159
-[]\OT1/cmr/m/n/10.95 Figure 5: []Standard de-vi-a-tion of
+Underfull \hbox (badness 7362) in paragraph at lines 152--152
+[]\OT1/cmr/m/n/10.95 Figure 4: []Standard de-vi-a-tion of
  []
 
-
-Package wrapfig Warning: Stationary wrapfigure forced to float on input line 16
-4.
-
-
-Package wrapfig Warning: Stationary wrapfigure forced to float on input line 16
-5.
-
+<../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png, id=110, 543.
+631pt x 349.305pt>
+File: ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png Graphic 
+file (type png)
+<use ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png>
+Package pdftex.def Info: ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_s
+caling.png  used on input line 184.
+(pdftex.def)             Requested size: 308.01485pt x 197.912pt.
 
 
 [4 <../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.
 png> <../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
->]
-
-Package wrapfig Warning: Stationary wrapfigure forced to float on input line 16
-6.
-
-<../img/009_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png, id
-=119, 1380.7585pt x 1153.911pt>
-File: ../img/009_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.pn
-g Graphic file (type png)
-<use ../img/009_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
->
-Package pdftex.def Info: ../img/009_total_throughput_matrix_nr50000000_ns500000
-00_maxkey1000000.png  used on input line 179.
-(pdftex.def)             Requested size: 280.83788pt x 234.68692pt.
+> <../img/004_std_join_time_by_max_key.png>]
 <../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000
-.png, id=120, 1380.7585pt x 1153.911pt>
+.png, id=121, 1380.7585pt x 1153.911pt>
 File: ../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey10
 00000.png Graphic file (type png)
 <use ../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey100
 0000.png>
 Package pdftex.def Info: ../img/006_speedup_total_throughput_matrix_nr50000000_
-ns50000000_maxkey1000000.png  used on input line 190.
+ns50000000_maxkey1000000.png  used on input line 193.
 (pdftex.def)             Requested size: 280.83788pt x 234.68692pt.
 
 
-[5 <../img/004_std_join_time_by_max_key.png> <../img/009_total_throughput_matri
-x_nr50000000_ns50000000_maxkey1000000.png>]
+[5 <../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png> <../img/0
+06_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png>]
 
-[6 <../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000
-000.png>] (./report2.aux)
+[6] (./report2.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
 Package rerunfilecheck Info: File `report2.out' has not changed.
-(rerunfilecheck)             Checksum: CDE5E54FB7FB0A51E0082D82E9B5E39F;1382.
+(rerunfilecheck)             Checksum: AFE1DFD60CAE2BBB5E7A3E5DAC30AB94;1382.
  ) 
 Here is how much of TeX's memory you used:
- 9278 strings out of 473190
- 147688 string characters out of 5715799
- 553867 words of memory out of 5000000
- 32404 multiletter control sequences out of 15000+600000
+ 9276 strings out of 473190
+ 147590 string characters out of 5715799
+ 553820 words of memory out of 5000000
+ 32403 multiletter control sequences out of 15000+600000
  564555 words of font info for 55 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,10n,79p,520b,501s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,10n,79p,520b,469s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
@@ -486,10 +474,10 @@ l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local
 /texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/
 texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/t
 exlive/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
-Output written on report2.pdf (8 pages, 1878381 bytes).
+Output written on report2.pdf (8 pages, 1674635 bytes).
 PDF statistics:
- 195 PDF objects out of 1000 (max. 8388607)
- 145 compressed objects within 2 object streams
- 36 named destinations out of 1000 (max. 500000)
+ 194 PDF objects out of 1000 (max. 8388607)
+ 144 compressed objects within 2 object streams
+ 35 named destinations out of 1000 (max. 500000)
  129 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -37,9 +37,9 @@
 The repository is organized around one sequential baseline and four optimized variants of the same partitioned hash-join pipeline. The core source files are:
 \begin{itemize}
     \item \texttt{hashjoin\_seq.cpp}: sequential reference;
-    \item \texttt{hashjoin\_par\_p.cpp}: parallel partition, sequential join;
-    \item \texttt{hashjoin\_par\_pj.cpp}: parallel partition + parallel join (contiguous partition ranges);
-    \item \texttt{hashjoin\_par\_pj\_wb.cpp}: adds workload-balanced assignment of partitions;
+    \item \texttt{hashjoin\_par\_p.cpp}: parallel partition phase, sequential join phase;
+    \item \texttt{hashjoin\_par\_pj.cpp}: parallel partition + parallel join (with contiguous partition ranges);
+    \item \texttt{hashjoin\_par\_pj\_wb.cpp}: adds workload balancing of partitions in the join phase;
     \item \texttt{hashjoin\_par\_pj\_wb\_map.cpp}: same balanced scheduling, plus flatter memory layout for partition counters/offsets and a custom flat hash table in the join build phase.
 \end{itemize}
 
@@ -138,28 +138,24 @@ The \texttt{par\_pj\_wb\_map} variant improves further, reaching \(0.13\) s (bes
 Strong scaling is measured by fixing input size and increasing threads.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.70\linewidth]{../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Partition-throughput matrix under fixed problem size.}
-    \label{fig:strong-partition}
+    \includegraphics[width=0.49\linewidth]{../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}\hfill
+    \includegraphics[width=0.49\linewidth]{../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Partition-throughput and join-throughput matrices under fixed problem size.}
+    \label{fig:strong-phase}
 \end{figure}
 
-\begin{figure}[H]
+\begin{wrapfigure}[10]{r}{0.42\textwidth}
+    \hspace{1.0em}
+    \vspace{-0.4em}
     \centering
-    \includegraphics[width=0.70\linewidth]{../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Join-throughput matrix under fixed problem size.}
-    \label{fig:strong-join}
-\end{figure}
-
-On the diagonal (\(T_{part}=T_{join}\)), \texttt{par\_pj\_wb\_map} reaches:
-
-\begin{wrapfigure}{r}{0.38\textwidth}
-    \vspace{-1.0em}
-    \centering
-    \includegraphics[width=0.30\textwidth]{../img/004_std_join_time_by_max_key.png}
+    \includegraphics[width=\linewidth]{../img/004_std_join_time_by_max_key.png}
     \caption{Standard deviation of \texttt{join\_time}.}
     \label{fig:std-join-wrap}
     \vspace{-0.8em}
 \end{wrapfigure}
+
+On the diagonal (\(T_{part}=T_{join}\)), \texttt{par\_pj\_wb\_map} reaches:
+
 \begin{itemize}
     \item speedup \(3.09\times\) at 4 threads;
     \item speedup \(6.87\times\) at 16 threads;
@@ -167,21 +163,28 @@ On the diagonal (\(T_{part}=T_{join}\)), \texttt{par\_pj\_wb\_map} reaches:
 \end{itemize}
 
 Scaling is strong up to about 32 threads, then gains are smaller. This is coherent with the partition plateau and with increased overhead/imbalance sensitivity in the join stage at high thread counts.
+
 In fact, the best result is got with \texttt{par\_pj\_wb\_map} using 16 join threads and 32 partition threads, with a speedup of about \(8.26\times\).
 
 \subsection{Weak Scaling}
-Strict weak scaling requires increasing input size proportionally to the number of threads while keeping work per thread constant.  
-The current campaign uses a fixed size (\(nr=ns=50\)M), so it is not a full weak-scaling experiment.
+Weak-scaling results are now measured with a dedicated campaign (\texttt{weak\_scaling.cpp}) and grid:
+\(N \in \{10,20,40,80\}\) million records per relation, \(T \in \{4,8,16,32\}\), and \(T_{part}=T_{join}\), with \(P=256\), seed \(=13\), and \(max\_key=10^6\).  
+Each \((N,T)\) point is repeated 5 times, then averaged.
 
-To keep this section grounded on available data, the global throughput matrix can be read as a scaling \textit{proxy} while resources increase:
+The weak-scaling curves are consistent across input sizes. Relative to 4 threads (same \(N\)):
+\begin{itemize}
+    \item at 8 threads, speedup is about \(1.65\times\);
+    \item at 16 threads, speedup is about \(2.36\)--\(2.55\times\);
+    \item at 32 threads, speedup is about \(2.64\)--\(2.82\times\).
+\end{itemize}
+The best observed weak-scaling speedup is \(2.82\times\) (for \(N=80\)M at 32 threads). This indicates good scalability trend with non-ideal efficiency at high thread counts, consistent with memory traffic and synchronization overheads.
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\linewidth]{../img/009_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Total throughput matrix used as weak-scaling proxy under fixed \(N\).}
-    \label{fig:weak-proxy}
+    \includegraphics[width=0.68\linewidth]{../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png}
+    \caption{Weak-scaling speedup versus number of threads for each \(N\).}
+    \label{fig:weak-scaling}
 \end{figure}
-
-The figure shows higher throughput as thread counts increase up to the 32--64 range, with reduced marginal gains at the top end. A true weak-scaling study still requires new runs where \(N\) grows with thread count (\(N \propto T\)).
 
 \subsection{Speedup}
 Global speedup is computed against the sequential mean total time (\(4.191\) s).
@@ -219,6 +222,6 @@ The results show a clear progression:
     \item locality-oriented structures (\texttt{par\_pj\_wb\_map}) deliver the best result (\(8.26\times\)).
 \end{itemize}
 
-So, for this workload, the main insights are that join-phase optimization dominates total performance, while partition scaling saturates earlier and sets a practical upper bound unless data movement costs are further reduced. A future extension should add a true weak-scaling campaign (\(N \propto T\)) to complete the scalability analysis requested by the assignment.
+So, for this workload, the main insights are that join-phase optimization dominates total performance, while partition scaling saturates earlier and sets a practical upper bound unless data movement costs are further reduced. The added weak-scaling campaign confirms the same trend on increasing problem sizes, with diminishing efficiency at high thread counts.
 
 \end{document}
