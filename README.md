@@ -50,9 +50,6 @@ Each run prints:
 - `join_count`
 - `checksum1`
 - `checksum2`
-- `part_time_sec`
-- `join_time_sec`
-- `tot_time_sec`
 
 and appends one row to `results/<executable>.csv`.
 
@@ -103,17 +100,18 @@ Most optimized variant in this repository: workload-balanced join plus flatter p
 The benchmark launcher is executed from `src/` with:
 
 ```bash
-./benchmark.sh <executable> grid/<grid_filename> <n_runs>
+./runners/benchmark.sh <executable> grid/<grid_filename> <n_runs>
 ```
 
 Examples:
 
 ```bash
-./benchmark.sh hashjoin_seq grid/seq_grid_search.sh 3
-./benchmark.sh hashjoin_par_p grid/par_grid_search.sh 3
-./benchmark.sh hashjoin_par_pj grid/par_grid_search.sh 3
-./benchmark.sh hashjoin_par_pj_wb grid/par_grid_search.sh 3
-./benchmark.sh hashjoin_par_pj_wb_map grid/par_grid_search.sh 3
+./runners/benchmark.sh hashjoin_seq grid/seq_grid_search.sh 3
+./runners/benchmark.sh hashjoin_par_p grid/par_grid_search.sh 3
+./runners/benchmark.sh hashjoin_par_pj grid/par_grid_search.sh 3
+./runners/benchmark.sh hashjoin_par_pj_wb grid/par_grid_search.sh 3
+./runners/benchmark.sh hashjoin_par_pj_wb_map grid/par_grid_search.sh 3
+./runners/benchmark.sh weak_scaling grid/weak_scaling_grid_search.sh 3
 ```
 
 What the script does:
@@ -129,6 +127,7 @@ What the script does:
 
 - `grid/seq_grid_search.sh`: grid for the sequential baseline
 - `grid/par_grid_search.sh`: grid for the parallel implementations
+- `grid/weak_scaling_grid_search.sh`: grid dedicated to the weak scalability analysis
 
 Each grid file defines:
 
@@ -153,5 +152,6 @@ make cleanall_par_p
 make cleanall_par_pj
 make cleanall_par_pj_wb
 make cleanall_par_pj_wb_map
+make cleanall_weak_scaling
 make cleanlogs
 ```
