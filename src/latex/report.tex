@@ -3,6 +3,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{float}
+\usepackage{wrapfig}
 \usepackage[hypertexnames=false]{hyperref}
 
 \title{Optimization of Partitioned Hash Join with Duplicates}
@@ -20,7 +21,7 @@
     \vspace{2.0cm}
     {\LARGE \textbf{Optimization of Partitioned Hash Join with Duplicates}\par}
     \vspace{1.2cm}
-    {\large Assignment 1 - Report\par}
+    {\large Assignment 2 - Report\par}
     \vfill
     {\large Gianluca Panzani\par}
     \vspace{0.3cm}
@@ -32,156 +33,187 @@
 \newpage
 \pagenumbering{arabic}
 
+
 \section{Implementation}
-\subsection{Execution variants and workflow}
-The project benchmarks the partition phase of a Partitioned Hash Join with three executables: \texttt{plain\_novec}, \texttt{plain\_vec}, and \texttt{avx2}. The three builds share the same algorithmic structure and interface but differ in vectorization strategy.
+The repository is organized around one sequential baseline and four optimized variants of the same partitioned hash-join pipeline. The core source files are \texttt{hashjoin\_seq.cpp} (sequential reference, baseline), \texttt{hashjoin\_par\_p.cpp} (parallel partition phase, sequential join phase), \texttt{hashjoin\_par\_pj.cpp} (parallel partition + parallel join, with contiguous partition ranges), \texttt{hashjoin\_par\_pj\_wb.cpp} (adds workload balancing of partitions in the join phase), and \texttt{hashjoin\_par\_pj\_wb\_map.cpp} (same balanced scheduling, plus flatter memory layout for partition counters/offsets and a custom flat hash table in the join build phase).
 
-Each run receives \texttt{N}, \texttt{P}, \texttt{hash\_name} and the path \texttt{output\_csv}; then it loads datasets, computes partitions for both relations, measures partition/global time, computes checksums and appends one result row to CSV.
+All executables preserve the same algorithmic structure: deterministic generation of relations \texttt{R} and \texttt{S}, partitioning of both relations (histogram, exclusive prefix sum, scatter), local build/probe join on matching partition ids, and reduction into \texttt{join\_count}, \texttt{checksum1}, \texttt{checksum2}.
+Keeping this structure unchanged across versions is important because it allows direct and fair comparisons between optimization steps.  
+Phase timings are exported separately (partition, join and total), so each code change can be analyzed also at phase level.
 
-This setup was chosen to keep the comparison controlled: all variants execute the same workflow on the same node (\texttt{node09}), consume the same input files and produce the same output format. Therefore, timing differences are mainly attributable to code generation and kernel implementation choices, not to different data paths or instrumentation overhead.
+\subsection{Hash Function Choice}
+In Module 1, the simple \texttt{mask} mapping was the fastest option in my tests.  
+However, because of requirments, i haven't kept the same mapping in this module. So I switched to a \texttt{xorshift}-based mapping before masking, which is not as fast as the previous one, but is still efficient and effective.
 
-\subsection{Experimental grid and reproducibility}
-The automation uses Bash + Slurm scripts. The file \texttt{run\_grid\_search.sh} handles cleanup, compilation, dataset generation and dependent submissions for \texttt{plain\_novec} $\rightarrow$ \texttt{plain\_vec} $\rightarrow$ \texttt{avx2}.
+I did not choose the \texttt{fmix32fold}-style mapping here because it is heavier in arithmetic operations and, in previous experiments, it gave worse performance than \texttt{xorshift}.
 
-Main grid (\texttt{runners/grid\_config.sh}):
-\begin{itemize}
-    \item \texttt{N} $\in \{10^5,10^6,10^7\}$,
-    \item \texttt{P} $\in \{16,32,\ldots,4096\}$,
-    \item hash $\in \{\texttt{mask}, \texttt{xorshift}, \texttt{fmix32fold}\}$.
-\end{itemize}
-This gives 81 configurations per executable. To evaluate the consistency of the measurements, we fixed \texttt{N=$10^7$} and repeated each configuration \texttt{10} times.
+\subsection{Benchmark}
+Benchmark automation is implemented in \texttt{benchmark.sh}. The script takes as input the executable target, the grid serch file and executes all combinations via Slurm (\texttt{run\_with\_slurm.sh}).  
+For each run, the executable appends one CSV row containing configuration parameters, phase times, speedup and so on.
 
-AVX2 currently supports only \texttt{mask} hash function, for the other cases the AVX2 executable exits after the runtime check.
+In the current campaign, fixed values are \texttt{nr=50'000'000}, \texttt{ns=50'000'000}, \texttt{P=256}, \texttt{seed=13}, \texttt{max\_key=1'000'000}; \texttt{partition\_threads} and \texttt{join\_threads} vary over \(\{4,8,16,32,64\}\) for the parallelized versions, while the sequential baseline runs with one thread.
 
-\subsection{Choice of the number of partitions \texttt{P}}
-\texttt{P} is restricted to powers of two (checked at runtime). This enables partition-id computation with bit masking:
-\[
-\texttt{part\_id} = \texttt{hash} \ \&\ (\texttt{P}-1),
-\]
-which avoids modulo/division in the hot loop and is SIMD-friendly.
+The Slurm runner (\texttt{runners/run\_with\_slurm.sh}) is built to run a single combination of parameters of the grid and pins execution to \texttt{node05}, avoiding machine-level variability.
 
-The explored range \texttt{16--4096} (4--12 partition bits) is wide enough to test coarse vs fine partitioning while keeping the grid manageable. Results show that within this range the impact of \texttt{P} is limited (max/min mean partition-time ratio about 1.001--1.008), while hash complexity has a much larger effect.
 
-\subsection{Hash functions}
-Initial 64-bit-multiply-based mappings were also auto-vectorized by GCC, but were not performance-profitable end-to-end. The final selected hashes rely on simpler bitwise and 32-bit-friendly operations, better suited to efficient auto-vectorization on the target CPU.
+\section{Parallelization Strategy}
+Parallelization is introduced phase-by-phase, without changing the global algorithm.
 
-So at the end, the following three hashes are benchmarked:
-\begin{itemize}
-    \item \texttt{mask}: low-bit selection via AND with \texttt{P-1} (lowest arithmetic cost),
-    \item \texttt{xorshift}: 64-bit shift/XOR mixing before masking,
-    \item \texttt{fmix32fold}: 64-to-32 fold plus fmix32-style finalization with shifts/XORs and 32-bit multiplications.
-\end{itemize}
-This choice spans a useful tradeoff space: \texttt{mask} maximizes mapping speed, while \texttt{xorshift} and \texttt{fmix32fold} provide progressively stronger bit mixing and typically more robust partition distribution on non-ideal key patterns.
-
-\subsection{Correctness verification}
-Correctness is validated through checksum comparison: each run stores a checksum of partitioned outputs, enabling cross-implementation validation without printing arrays.
-
-All optimized variants were checked and, in each generated \texttt{.csv} file, every comparable group has a single checksum. 
-
-This confirms that all implementations produce the same partitioning result for the same input, which gives an enough reliable indication of correctness.
-
-\section{SIMD Optimization}
-\subsection{Vectorization evidence and hash selection}
-Vectorization is inspected with GCC diagnostics. The executables \texttt{plain\_vec} and \texttt{avx2} are got by compiling with \texttt{-fopt-info-vec-optimized -fopt-info-vec-missed}; while the \texttt{plain\_novec} one uses \texttt{-fno-tree-vectorize}.
-
-Representative lines from \texttt{gcc\_vec\_report.txt} confirm the auto-vectorization of the main partitioning loops in \texttt{plain\_vec}:
-\begin{verbatim}
-lib/partition.cpp:9:31: optimized: loop vectorized using 32 byte vectors
-lib/partition.cpp:20:31: optimized: loop vectorized using 32 byte vectors
-lib/partition.cpp:36:31: optimized: loop vectorized using 32 byte vectors
-\end{verbatim}
-
-\subsection{AVX2 mask kernel}
-The AVX2 kernel in \texttt{lib/partition\_avx2.cpp} processes 4 keys per iteration with:
+\subsection{Partition and join phases}
+For each relation, the partition pipeline, which is parallelized in all the parallel executable variants, keeps the standard three stages:
 \begin{enumerate}
-    \item vector load of 4 x 64-bit keys,
-    \item vector AND with broadcast \texttt{P-1},
-    \item packing low 32-bit lanes,
-    \item 128-bit store of 4 partition ids,
-    \item scalar tail handling.
+    \item \textit{Histogram:} input is split into chunks and each thread builds a local histogram over \(P\) partitions.
+    \item \textit{Prefix sum:} local histograms are reduced into a global histogram, then an exclusive prefix sum computes global partition starts. In the current code this step is \textbf{not parallelized}: it is executed as a serial scan over the \(P\) counters, followed by a serial construction of per-thread offsets.
+    \item \textit{Scatter:} each thread writes its chunk into the output using thread-specific offsets derived from the prefix stage.
 \end{enumerate}
+The key design detail is that scatter uses precomputed thread-local offsets, so the hot loop does not require atomics or locks.
+
+After partitioning, partitions are independent units of work and, in this way, also the join phase doesn't need locks.
+So, at the end, the code is organized like follows:
+\begin{itemize}
+    \item \texttt{hashjoin\_seq}: join and partition phases are both sequential.
+    \item \texttt{hashjoin\_par\_p}: join is still sequential; only partition is parallel.
+    \item \texttt{hashjoin\_par\_pj}: partitions are split into contiguous ranges across join threads.
+    \item \texttt{hashjoin\_par\_pj\_wb}: partitions are assigned with greedy load balancing based on their size.
+    \item \texttt{hashjoin\_par\_pj\_wb\_map}: same balanced scheduling, plus a flat open-addressing count table in build/probe and flat arrays in partition counters/offsets.
+\end{itemize}
+
+\subsection{What remains mostly sequential}
+The global prefix-sum step and the final reduction of per-thread join results are lightweight compared with histogram/scatter/probe loops, so they are kept simple. In practice, with \(P=256\), this serial part has low absolute cost compared with the full partition and join loops. This is coherent with the measured behavior: once partition and join loops are parallelized, remaining bottlenecks come mostly from memory traffic and per-thread overhead at high thread counts, not from control-heavy serial code.
+
 
 \section{Results Analysis}
-All quantitative values are computed from \texttt{results/benchmark\_results.csv} (repeated runs), while \texttt{results/results.csv} is used only for the \texttt{N}-scaling observation.
+All plots in this section are generated from the benchmark CSV files in \texttt{src/results/}.  
+The sequential baseline mean total time is \(4.191\) s.
 
-\subsection{Benchmarking methodology}
-The repeated benchmark uses \texttt{M=10} repetitions per configuration. We report execution-time means and standard deviations for the main comparisons, and we also report medians for the mask summary to satisfy robust-timing requirements.
+Note that in the matrix-like plots of this section we have that:
+\begin{itemize}
+    \item the bars in each position of the matrix represent the value of \texttt{seq}, \texttt{par\_p}, \texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map} (from left to right),
+    \item the number of \texttt{join\_threads} and \texttt{part\_threads}, which are on the two axes, vary over \(\{1,4,8,16,32,64\}\).
+\end{itemize}
+
+\subsection{Join and Partition Time}
+The phase-level matrices at the end of the section, show the central behavior of the implementation.
+
+Partition time scales well from 4 to 32 threads, then flattens around \(0.92\) s at 4 partition threads and around \(0.36\)--\(0.37\) s at 32--64 partition threads.
+This indicates good early scaling followed by memory-system saturation.
+
+Join time is where variants differ the most. The executables \texttt{par\_pj} and \texttt{par\_pj\_wb} reduce join time to about \(0.18\) s in the best area.  
+The \texttt{par\_pj\_wb\_map} variant improves further, reaching \(0.13\) s (best run, 32 partition threads and 16 join threads), confirming that data-structure locality in build/probe is a major factor.
+
+As we can see, partition time is similar across all parallel variants (\texttt{par\_p}, \texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map}) because they use the same partition implementation, in fact the main variation comes from thread count.
+In contrast, once the join phase is parallelized (\texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map}), join time differences become more evident, with a clear gap between \texttt{par\_pj\_wb} and \texttt{par\_pj\_wb\_map}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.52\linewidth]{../img/run-to-run_std.png}
-    \caption{Standard deviation of partition time across the 10 repetitions.}
-    \label{fig:stddev-partition-time}
+    \includegraphics[width=0.49\linewidth]{../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png}\hfill
+    \includegraphics[width=0.49\linewidth]{../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Partition-time and join-time matrices for each combination of the number of join threads (rows of the matrix) and partition threads (columns of the matrix).}
+    \label{fig:times-matrices}
 \end{figure}
 
-The variability values are small relative to mean partition times. For the \texttt{mask} summary, standard deviations are around 0.123 ms (\texttt{plain\_novec}), 0.056 ms (\texttt{plain\_vec}), and 0.058 ms (\texttt{avx2}), corresponding to sub-1\% relative variation. This supports using mean values as representative central estimates.
-
-\subsection{Performance and limits}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.32\linewidth]{../img/throughput_vs_P_mask.png}\hfill
-    \includegraphics[width=0.32\linewidth]{../img/throughput_vs_P_xorshift.png}\hfill
-    \includegraphics[width=0.32\linewidth]{../img/throughput_vs_P_fmix32fold.png}
-    \caption{Throughput vs \texttt{P} for \texttt{mask}, \texttt{xorshift}, and \texttt{fmix32fold}.}
-    \label{fig:throughput-vs-p}
+    \includegraphics[width=0.62\linewidth]{../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Total execution-time (\texttt{time\_sec}) matrix for each combination of the number of join threads (rows of the matrix) and partition threads (columns of the matrix).}
+    \label{fig:time-sec-matrix}
 \end{figure}
-
-Average throughput ranking is stable: \texttt{mask} $>$ \texttt{xorshift} $>$ \texttt{fmix32fold}.
-\begin{itemize}
-    \item \texttt{plain\_novec}: \(1.09\cdot 10^9\) (\texttt{mask}), \(6.86\cdot 10^8\) (\texttt{xorshift}), \(4.55\cdot 10^8\) (\texttt{fmix32fold}) elems/s,
-    \item \texttt{plain\_vec}: \(1.21\cdot 10^9\) (\texttt{mask}), \(8.98\cdot 10^8\) (\texttt{xorshift}), \(7.96\cdot 10^8\) (\texttt{fmix32fold}) elems/s,
-    \item \texttt{avx2}: \(1.36\cdot 10^9\) (\texttt{mask}) elems/s.
-\end{itemize}
-Limits interpretation from observed speedups:
-\begin{itemize}
-    \item \texttt{mask} has low arithmetic intensity and is closer to memory-bound behavior (modest SIMD gain),
-    \item \texttt{xorshift} is more compute-heavy and gets larger SIMD gain,
-    \item \texttt{fmix32fold} is the most compute-heavy and achieves the highest relative SIMD gain.
-\end{itemize}
-For \texttt{mask}, \texttt{results/results.csv} also shows overhead amortization with \texttt{N}: throughput rises from about \(9.95\times10^8\) at \texttt{N=$10^5$} to \(1.09\times10^9\) elems/s at \texttt{N=$10^7$} in \texttt{plain\_novec}.
 
 \subsection{Speedup}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.32\linewidth]{../img/speedup_vs_P_mask.png}\hfill
-    \includegraphics[width=0.32\linewidth]{../img/speedup_vs_P_xorshift.png}\hfill
-    \includegraphics[width=0.32\linewidth]{../img/speedup_vs_P_fmix32fold.png}
-    \caption{Speedup vs \texttt{P} (baseline: \texttt{plain\_novec}).}
-    \label{fig:speedup-vs-p}
-\end{figure}
+Global speedup is computed against the sequential baseline.
 
-AVX2 is unsupported for \texttt{xorshift} and \texttt{fmix32fold}; in those cases speedup comes from \texttt{plain\_vec} only. Mean speedups of \texttt{plain\_vec} over \texttt{plain\_novec} are about \(1.11\times\) (\texttt{mask}), \(1.31\times\) (\texttt{xorshift}), and \(1.75\times\) (\texttt{fmix32fold}).
+The table confirms the optimization trajectory: partition-only parallelization gives limited gains, while parallel join plus balanced scheduling gives the main jump; flatter data structures in \texttt{par\_pj\_wb\_map} provide the final improvement.
 
 \begin{table}[H]
     \centering
-    \begin{tabular}{lrrr}
+    \begin{tabular}{lrrrr}
         \toprule
-        \texttt{exec\_type} & \texttt{partition\_time} [s] (mean $\pm \sigma$) & \texttt{throughput} [elems/s] & \texttt{speedup} \\
+        Variant & Best \(T_{part}\) & Best \(T_{join}\) & Best time [s] & Speedup \\
         \midrule
-        \texttt{plain\_novec} & $0.018373 \pm 0.000123$ & $1.089 \times 10^9$ & 1.0000 \\
-        \texttt{plain\_vec}   & $0.016536 \pm 0.000056$ & $1.210 \times 10^9$ & 1.1111 \\
-        \texttt{avx2}         & $0.014721 \pm 0.000058$ & $1.359 \times 10^9$ & 1.2481 \\
-        \midrule
-        \multicolumn{4}{l}{All executions in this batch were run on the same machine (\texttt{node09}).} \\
+        \texttt{hashjoin\_par\_p} & 64 & 32 & 2.394 & \(1.75\times\) \\
+        \texttt{hashjoin\_par\_pj} & 64 & 16 & 0.549 & \(7.63\times\) \\
+        \texttt{hashjoin\_par\_pj\_wb} & 32 & 16 & 0.545 & \(7.69\times\) \\
+        \texttt{hashjoin\_par\_pj\_wb\_map} & 32 & 16 & 0.507 & \(8.26\times\) \\
         \bottomrule
     \end{tabular}
-    \caption{\texttt{Mask}-only repeated benchmark summary.}
-    \label{tab:exec-summary}
+    \caption{Best observed configuration per executable.}
+    \label{tab:best-speedups}
 \end{table}
+
+The gain of workload balancing alone (\texttt{par\_pj\_wb} vs \texttt{par\_pj}) is small in this campaign.  
+With \(P=256\), \(NS=NR=5 \cdot 10^7\) (which means that the total number of elements is $10^8$) and 32 join threads, each thread still processes a lot of partitions.
+So a first observation could be that the workload could be close to the average even with contiguous assignment.
+Another one, instead, could be that the size of the partitions is very similar, so the balancing isn't much useful. 
+For this reasons, balancing has limited improvement and the extra speedup is almost absent.
+A larger benefit could be expected when the dataset is smaller or when effective workload is concentrated in fewer hot partitions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\linewidth]{../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Total speedup matrix over thread combinations and variants.}
+    \label{fig:speedup}
+\end{figure}
+
+\subsection{Strong Scaling}
+Strong scaling is measured by fixing input size and increasing threads.
+
+On the diagonal (\(T_{part} = T_{join}\), with $T$ number of threads), \texttt{par\_pj\_wb\_map} reaches:
+
+\begin{itemize}
+    \item speedup \(3.09\times\) at 4 threads;
+    \item speedup \(6.87\times\) at 16 threads;
+    \item speedup \(7.62\times\) at 64 threads.
+\end{itemize}
+
+For the best implementations, strong scaling improves well up to roughly 16--32 threads, then a clear plateau appears. This suggests that computation is no longer the dominant cost at high thread counts and execution becomes constrained by hardware/system limits.
+
+In fact, the best result is got with \texttt{par\_pj\_wb\_map} using 16 join threads and 32 partition threads, with a speedup of about \(8.26\times\).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.58\linewidth]{../img/011_strong_scaling_speedup_vs_threads_by_exec_type_N50000000.png}
+    \caption{Strong-scaling speedup versus number of threads for each executable type.}
+    \label{fig:strong-scaling}
+\end{figure}
+
+\subsection{Weak Scaling}
+Weak-scaling results are now measured with a dedicated campaign (\texttt{weak\_scaling.cpp}) and grid:
+\(N \in \{10,20,40,80\}\) million records per relation and \(T \in \{4,8,16,32\}\) (with \(T=T_{part}=T_{join}\)).
+Each \((N,T)\) point is repeated 5 times, then averaged to avoid unstable measures.
+
+The weak-scaling curves are consistent across input sizes. For each executable we have:
+\begin{itemize}
+    \item speedup \(1.65\times\) at 8 threads;
+    \item speedup \(2.36\)--\(2.55\times\) at 16 threads;
+    \item speedup \(2.64\)--\(2.82\times\) at 32 threads.
+\end{itemize}
+Overall, weak scalability is only moderate: speedup increases with thread count but clearly sublinearly. Since larger inputs do not preserve near-constant execution efficiency, the main limitation appears to come from machine-level bottlenecks that become more visible at scale, most likely memory bandwidth, cache contention and synchronization overhead.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.58\linewidth]{../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png}
+    \caption{Weak-scaling speedup versus number of threads for each \(N\).}
+    \label{fig:weak-scaling}
+\end{figure}
+
+
+\section{Correctness validation}
+Correctness checks are handled by \texttt{checker.cpp}. The checker scans the output directory (\texttt{out/} by default), reads all regular files, and compares their raw content byte-by-byte against the first file.
+The logic is intentionally strict: if at least one file differs, it reports the mismatch and returns a non-OK status.
+
+In this project, each Slurm output file stores the final triple: \texttt{join\_count}, \texttt{checksum1}, \texttt{checksum2}.
+Therefore, identical files imply identical final join outputs across compared runs. In the collected data, all variants produced the same values, which confirms that optimization changes preserve functional correctness.
 
 
 \section{Conclusions}
-Reading throughput and speedup together is important: absolute throughput is highest for \texttt{mask}, but relative SIMD gain is highest for \texttt{fmix32fold}. This is coherent with a classic roofline-style intuition. When per-element arithmetic is very small (\texttt{mask}), memory traffic quickly becomes the dominant cost and extra SIMD compute capacity cannot be fully exploited. As arithmetic work increases (\texttt{xorshift}, then \texttt{fmix32fold}), vector lanes are used more effectively and the benefit of SIMD instructions becomes more visible in the speedup metric.
-
-At the same time, the near-flat curves across \texttt{P} indicate that, in the explored range, changing the number of partitions does not materially change the computational character of the kernel.
-
-So, the dominant factors remain hash complexity and execution strategy (scalar, auto-vectorized, or manual AVX2), and the results are consistent across runs and configurations:
+The results show a clear progression:
 \begin{itemize}
-    \item hash complexity dominates absolute cost (\texttt{mask} fastest, \texttt{fmix32fold} slowest),
-    \item SIMD gains depend on kernel type: smaller on memory-lean \texttt{mask}, larger on compute-heavier hashes,
-    \item within \texttt{P=16..4096}, the effect of \texttt{P} is secondary compared to hash and execution kernel.
+    \item parallelizing only partitioning is not sufficient (speedup capped around \(1.75\times\));
+    \item parallelizing join is the dominant improvement (around \(7.6\times\));
+    \item workload balancing improves robustness, but in this setup its standalone speedup is small because average work per thread is already similar;
+    \item locality-oriented structures (\texttt{par\_pj\_wb\_map}) deliver the best result (\(8.26\times\)).
 \end{itemize}
 
-For the AVX2 manual path, we have a higher speedup with respect to the auto-vectorized version. This could be due to the fact that the hand-written AVX2 kernel removes part of the compiler-generated overhead and uses a SIMD sequence that is more directly matched to the structure of the mask operation.
+So, for this workload, the main insights are that join-phase optimization dominates total performance, while partition scaling saturates earlier and sets a practical upper bound unless data movement costs are further reduced. Strong scaling is good up to about 16--32 threads for the best variants, then plateaus as shared machine resources saturate. The weak-scaling campaign is only moderate (sublinear speedup growth), which is consistent with machine-level bottlenecks becoming dominant at higher thread counts.
 
 \end{document}
