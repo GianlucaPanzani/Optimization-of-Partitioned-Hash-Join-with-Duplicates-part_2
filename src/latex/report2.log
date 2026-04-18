@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.12.28)  18 APR 2026 16:16
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.12.28)  18 APR 2026 17:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -350,115 +350,101 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 
 
 [1]
-Overfull \hbox (2.49551pt too wide) in paragraph at lines 42--43
-[]\OT1/cmtt/m/n/10.95 hashjoin[]par[]pj.cpp\OT1/cmr/m/n/10.95 : par-al-lel par-
-ti-tion + par-al-lel join (with con-tigu-ous par-ti-tion ranges); 
- []
 
-
-
-[1{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
-}]
-Overfull \hbox (2.28717pt too wide) in paragraph at lines 107--108
+[1]
+Overfull \hbox (2.28717pt too wide) in paragraph at lines 90--91
 []\OT1/cmr/m/n/10.95 the bars in each po-si-tion of the ma-trix rep-re-sent the
  value of \OT1/cmtt/m/n/10.95 seq\OT1/cmr/m/n/10.95 , \OT1/cmtt/m/n/10.95 par[]
 p\OT1/cmr/m/n/10.95 , \OT1/cmtt/m/n/10.95 par[]pj\OT1/cmr/m/n/10.95 , \OT1/cmtt
 /m/n/10.95 par[]pj[]wb\OT1/cmr/m/n/10.95 ,
  []
 
-
-
-[2]
-<../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png, id=93, 138
-0.7585pt x 1153.911pt>
-File: ../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png Graphi
-c file (type png)
-<use ../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png>
-Package pdftex.def Info: ../img/005_time_sec_matrix_nr50000000_ns50000000_maxke
-y1000000.png  used on input line 125.
-(pdftex.def)             Requested size: 280.83788pt x 234.68692pt.
-<../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png, id=9
-5, 1380.7585pt x 1153.911pt>
+<../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png, id=8
+4, 1380.7585pt x 1153.911pt>
 File: ../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png 
 Graphic file (type png)
 <use ../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png>
 Package pdftex.def Info: ../img/001_partition_time_matrix_nr50000000_ns50000000
-_maxkey1000000.png  used on input line 132.
+_maxkey1000000.png  used on input line 99.
 (pdftex.def)             Requested size: 221.95676pt x 185.47467pt.
-<../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png, id=96, 13
+<../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png, id=86, 13
 80.7585pt x 1153.911pt>
 File: ../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png Graph
 ic file (type png)
 <use ../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png>
 Package pdftex.def Info: ../img/003_join_time_matrix_nr50000000_ns50000000_maxk
-ey1000000.png  used on input line 133.
+ey1000000.png  used on input line 100.
 (pdftex.def)             Requested size: 221.95676pt x 185.47467pt.
 
 
-[3 <../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img
-/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png> <../img/003
-_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png>]
+[2{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
+} <../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png> <.
+./img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png>]
+<../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png, id=95, 138
+0.7585pt x 1153.911pt>
+File: ../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png Graphi
+c file (type png)
+<use ../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png>
+Package pdftex.def Info: ../img/005_time_sec_matrix_nr50000000_ns50000000_maxke
+y1000000.png  used on input line 116.
+(pdftex.def)             Requested size: 280.83788pt x 234.68692pt.
+
+
+[3 <../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png>]
 <../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000
-.png, id=106, 1380.7585pt x 1153.911pt>
+.png, id=105, 1380.7585pt x 1153.911pt>
 File: ../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey10
 00000.png Graphic file (type png)
 <use ../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey100
 0000.png>
 Package pdftex.def Info: ../img/006_speedup_total_throughput_matrix_nr50000000_
-ns50000000_maxkey1000000.png  used on input line 168.
+ns50000000_maxkey1000000.png  used on input line 151.
 (pdftex.def)             Requested size: 280.83788pt x 234.68692pt.
+<../img/011_strong_scaling_speedup_vs_threads_by_exec_type_N50000000.png, id=10
+6, 543.631pt x 349.305pt>
+File: ../img/011_strong_scaling_speedup_vs_threads_by_exec_type_N50000000.png G
+raphic file (type png)
+<use ../img/011_strong_scaling_speedup_vs_threads_by_exec_type_N50000000.png>
+Package pdftex.def Info: ../img/011_strong_scaling_speedup_vs_threads_by_exec_t
+ype_N50000000.png  used on input line 169.
+(pdftex.def)             Requested size: 262.7222pt x 168.81042pt.
 
 
 [4 <../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000
-000.png>]
-<../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
-, id=116, 1371.1225pt x 1153.911pt>
-File: ../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey100000
-0.png Graphic file (type png)
-<use ../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000
-.png>
-Package pdftex.def Info: ../img/007_partition_throughput_matrix_nr50000000_ns50
-000000_maxkey1000000.png  used on input line 190.
-(pdftex.def)             Requested size: 221.95676pt x 186.79521pt.
-<../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png, id=
-117, 1380.7585pt x 1153.911pt>
-File: ../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
- Graphic file (type png)
-<use ../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png>
-
-Package pdftex.def Info: ../img/008_join_throughput_matrix_nr50000000_ns5000000
-0_maxkey1000000.png  used on input line 191.
-(pdftex.def)             Requested size: 221.95676pt x 185.47467pt.
-<../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png, id=118, 543.
+000.png> <../img/011_strong_scaling_speedup_vs_threads_by_exec_type_N50000000.p
+ng>]
+<../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png, id=115, 543.
 631pt x 349.305pt>
 File: ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png Graphic 
 file (type png)
 <use ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png>
 Package pdftex.def Info: ../img/010_weak_scaling_speedup_vs_threads_by_N_weak_s
-caling.png  used on input line 203.
-(pdftex.def)             Requested size: 308.01485pt x 197.912pt.
+caling.png  used on input line 185.
+(pdftex.def)             Requested size: 262.7222pt x 168.81042pt.
 
 
-[5 <../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.
-png> <../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png
-> <../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png>]
+[5 <../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png>]
 
 [6] (./report2.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
 Package rerunfilecheck Info: File `report2.out' has not changed.
-(rerunfilecheck)             Checksum: E2BBD110C6E809FDF0F801E5B3CF7D5B;1448.
+(rerunfilecheck)             Checksum: 17C92D029219604C6714B59BC808E1E3;1443.
  ) 
 Here is how much of TeX's memory you used:
- 9263 strings out of 473190
- 147138 string characters out of 5715799
- 553878 words of memory out of 5000000
- 32391 multiletter control sequences out of 15000+600000
+ 9252 strings out of 473190
+ 146503 string characters out of 5715799
+ 553876 words of memory out of 5000000
+ 32384 multiletter control sequences out of 15000+600000
  564555 words of font info for 55 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,10n,79p,520b,521s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,10n,79p,717b,490s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
@@ -470,10 +456,10 @@ l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local
 /texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/
 texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/t
 exlive/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
-Output written on report2.pdf (8 pages, 1638342 bytes).
+Output written on report2.pdf (8 pages, 1202066 bytes).
 PDF statistics:
- 191 PDF objects out of 1000 (max. 8388607)
- 143 compressed objects within 2 object streams
- 34 named destinations out of 1000 (max. 500000)
- 124 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 184 PDF objects out of 1000 (max. 8388607)
+ 138 compressed objects within 2 object streams
+ 30 named destinations out of 1000 (max. 500000)
+ 119 words of extra memory for PDF output out of 10000 (max. 10000000)
 

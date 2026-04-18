@@ -1,11 +1,11 @@
 \contentsline {section}{\numberline {1}Implementation}{1}{section.2}%
-\contentsline {subsection}{\numberline {1.1}Hash Function Choice}{1}{subsection.7}%
-\contentsline {subsection}{\numberline {1.2}Benchmark}{1}{subsection.8}%
-\contentsline {section}{\numberline {2}Parallelization Strategy}{2}{section.9}%
-\contentsline {section}{\numberline {3}Results Analysis}{2}{section.13}%
-\contentsline {subsection}{\numberline {3.1}Join and Partition Time}{2}{subsection.14}%
-\contentsline {subsection}{\numberline {3.2}Speedup}{4}{subsection.17}%
-\contentsline {subsection}{\numberline {3.3}Strong Scaling}{4}{subsection.20}%
-\contentsline {subsection}{\numberline {3.4}Weak Scaling}{5}{subsection.22}%
-\contentsline {section}{\numberline {4}Correctness validation}{6}{section.24}%
-\contentsline {section}{\numberline {5}Conclusions}{6}{section.25}%
+\contentsline {subsection}{\numberline {1.1}Hash Function Choice}{1}{subsection.3}%
+\contentsline {subsection}{\numberline {1.2}Benchmark}{1}{subsection.4}%
+\contentsline {section}{\numberline {2}Parallelization Strategy}{1}{section.5}%
+\contentsline {section}{\numberline {3}Results Analysis}{2}{section.9}%
+\contentsline {subsection}{\numberline {3.1}Join and Partition Time}{2}{subsection.10}%
+\contentsline {subsection}{\numberline {3.2}Speedup}{3}{subsection.13}%
+\contentsline {subsection}{\numberline {3.3}Strong Scaling}{4}{subsection.16}%
+\contentsline {subsection}{\numberline {3.4}Weak Scaling}{5}{subsection.18}%
+\contentsline {section}{\numberline {4}Correctness validation}{5}{section.20}%
+\contentsline {section}{\numberline {5}Conclusions}{6}{section.21}%
