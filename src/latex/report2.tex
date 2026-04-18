@@ -33,10 +33,11 @@
 \newpage
 \pagenumbering{arabic}
 
+
 \section{Implementation}
 The repository is organized around one sequential baseline and four optimized variants of the same partitioned hash-join pipeline. The core source files are:
 \begin{itemize}
-    \item \texttt{hashjoin\_seq.cpp}: sequential reference;
+    \item \texttt{hashjoin\_seq.cpp}: sequential reference (baseline);
     \item \texttt{hashjoin\_par\_p.cpp}: parallel partition phase, sequential join phase;
     \item \texttt{hashjoin\_par\_pj.cpp}: parallel partition + parallel join (with contiguous partition ranges);
     \item \texttt{hashjoin\_par\_pj\_wb.cpp}: adds workload balancing of partitions in the join phase;
@@ -55,29 +56,22 @@ Phase timings are exported separately (partition, join and total), so each code 
 
 \subsection{Hash Function Choice}
 In Module 1, the simple \texttt{mask} mapping was the fastest option in my tests.  
-However, in this module I preferred not to keep the same mapping used in the provided reference-style code, so I switched to an xorshift-based mapping before masking (\texttt{key \textasciicircum= key >> ...; pid = key \& (P-1)}).
+However, because of requirments, i haven't kept the same mapping in this module. So I switched to a \texttt{xorshift}-based mapping before masking, which is not as fast as the previous one, but is still efficient and effective.
 
-I did not choose the \texttt{fmix32fold}-style mapping here because it is heavier in arithmetic operations and, in previous experiments, it gave worse performance than xorshift for this workload.
+I did not choose the \texttt{fmix32fold}-style mapping here because it is heavier in arithmetic operations and, in previous experiments, it gave worse performance than \texttt{xorshift}.
 
 \subsection{Benchmark}
-Benchmark automation is implemented in \texttt{benchmark.sh}. The script takes an executable target, loads a grid file, compiles the selected target with \texttt{make -B} and executes all combinations via Slurm (\texttt{run\_with\_slurm.sh}).  
-For each run, the executable appends one CSV row containing configuration parameters, phase times, throughputs and correctness outputs.
+Benchmark automation is implemented in \texttt{benchmark.sh}. The script takes as input the executable target, the grid serch file and executes all combinations via Slurm (\texttt{run\_with\_slurm.sh}).  
+For each run, the executable appends one CSV row containing configuration parameters, phase times, speedup and so on.
 
 In the current campaign:
 \begin{itemize}
     \item fixed values are \texttt{nr=50'000'000}, \texttt{ns=50'000'000}, \texttt{P=256}, \texttt{seed=13}, \texttt{max\_key=1'000'000};
-    \item while \texttt{partition\_threads} and \texttt{join\_threads} vary over \(\{4,8,16,32,64\}\);
-    \item the sequential baseline runs with one thread.
+    \item \texttt{partition\_threads} and \texttt{join\_threads} vary over \(\{4,8,16,32,64\}\) for the parallelized versions, while the sequential baseline with one thread.
 \end{itemize}
 
-The Slurm runner (\texttt{runners/run\_with\_slurm.sh}) runs a single combination of parameters of the grid and pins execution to \texttt{node05}. This keeps machine-level variability under control and allows direct comparison of different implementations under the same hardware conditions.
+The Slurm runner (\texttt{runners/run\_with\_slurm.sh}) is built to run a single combination of parameters of the grid and pins execution to \texttt{node05}, avoiding machine-level variability.
 
-\subsection{Checker}
-Correctness checks are handled by \texttt{checker.cpp}. The checker scans the output directory (\texttt{out/} by default), reads all regular files, and compares their raw content byte-by-byte against the first file.
-The logic is intentionally strict: if at least one file differs, it reports the mismatch and returns a non-OK status.
-
-In this project, each Slurm output file stores the final triple: \texttt{join\_count}, \texttt{checksum1}, \texttt{checksum2}.
-Therefore, identical files imply identical final join outputs across compared runs. In the collected data, all variants produced the same values, which confirms that optimization changes preserve functional correctness.
 
 \section{Parallelization Strategy}
 Parallelization is introduced phase-by-phase, without changing the global algorithm.
@@ -103,16 +97,33 @@ After partitioning, partitions are independent units of work.
 \textbf{What remains mostly sequential.}
 The global prefix-sum step and the final reduction of per-thread join results are lightweight compared with histogram/scatter/probe loops, so they are kept simple. In practice, with \(P=256\), this serial part has low absolute cost compared with the full partition and join loops. This is coherent with the measured behavior: once partition and join loops are parallelized, remaining bottlenecks come mostly from memory traffic and per-thread overhead at high thread counts, not from control-heavy serial code.
 
+
 \section{Results Analysis}
-All plots in this section are generated from the current benchmark CSV files in \texttt{src/results/}.  
+All plots in this section are generated from the benchmark CSV files in \texttt{src/results/}.  
 The sequential baseline mean total time is \(4.191\) s.
 
+Note that in the matrix-like plots of this section we have that:
+\begin{itemize}
+    \item the bars in each position of the matrix represent the value of \texttt{seq}, \texttt{par\_p}, \texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map} (from left to right),
+    \item the number of \texttt{join\_threads} and \texttt{part\_threads}, which are on the two axes, vary over \(\{1,4,8,16,32,64\}\).
+\end{itemize}
+
 \subsection{Join and Partition Time}
-The phase-level matrices show the central behavior of the implementation.
+The phase-level matrices  at the end of the section, show the central behavior of the implementation.
+
+Partition time scales well from 4 to 32 threads, then flattens around \(0.92\) s at 4 partition threads and around \(0.36\)--\(0.37\) s at 32--64 partition threads.
+This indicates good early scaling followed by memory-system saturation.
+
+Join time is where variants differ the most. The executables \texttt{par\_pj} and \texttt{par\_pj\_wb} reduce join time to about \(0.18\) s in the best area.  
+The \texttt{par\_pj\_wb\_map} variant improves further, reaching \(0.13\) s (best run, 32 partition threads and 16 join threads), confirming that data-structure locality in build/probe is a major factor.
+
+As we can see, partition time is similar across all parallel variants (\texttt{par\_p}, \texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map}) because they use the same partition implementation, in fact the main variation comes from thread count.
+In contrast, once the join phase is parallelized (\texttt{par\_pj}, \texttt{par\_pj\_wb}, \texttt{par\_pj\_wb\_map}), join time differences become more evident, with a clear gap between \texttt{par\_pj\_wb} and \texttt{par\_pj\_wb\_map}.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.62\linewidth]{../img/005_time_sec_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Total execution-time (\texttt{time\_sec}) matrix for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\).}
+    \caption{Total execution-time (\texttt{time\_sec}) matrix for each combination of the number of join threads (rows of the matrix) and partition threads (columns of the matrix).}
     \label{fig:time-sec-matrix}
 \end{figure}
 
@@ -120,80 +131,12 @@ The phase-level matrices show the central behavior of the implementation.
     \centering
     \includegraphics[width=0.49\linewidth]{../img/001_partition_time_matrix_nr50000000_ns50000000_maxkey1000000.png}\hfill
     \includegraphics[width=0.49\linewidth]{../img/003_join_time_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Partition-time and join-time matrices for \(nr=ns=50\)M, \(P=256\), \(max\_key=10^6\).}
+    \caption{Partition-time and join-time matrices for each combination of the number of join threads (rows of the matrix) and partition threads (columns of the matrix).}
     \label{fig:times-matrices}
 \end{figure}
 
-Partition time scales well from 4 to 32 threads, then flattens:
-\begin{itemize}
-    \item around \(0.92\) s at 4 partition threads;
-    \item around \(0.36\)--\(0.37\) s at 32--64 partition threads.
-\end{itemize}
-This indicates good early scaling followed by memory-system saturation.
-
-Join time is where variants differ the most. The executables \texttt{par\_pj} and \texttt{par\_pj\_wb} reduce join time to about \(0.18\) s in the best area.  
-The \texttt{par\_pj\_wb\_map} variant improves further, reaching \(0.13\) s (best run, 32 partition threads and 16 join threads), confirming that data-structure locality in build/probe is a major factor.
-
-\subsection{Strong Scaling}
-Strong scaling is measured by fixing input size and increasing threads.
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.49\linewidth]{../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}\hfill
-    \includegraphics[width=0.49\linewidth]{../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Partition-throughput and join-throughput matrices under fixed problem size.}
-    \label{fig:strong-phase}
-\end{figure}
-
-\begin{wrapfigure}[10]{r}{0.42\textwidth}
-    \hspace{1.0em}
-    \vspace{-0.4em}
-    \centering
-    \includegraphics[width=\linewidth]{../img/004_std_join_time_by_max_key.png}
-    \caption{Standard deviation of \texttt{join\_time}.}
-    \label{fig:std-join-wrap}
-    \vspace{-0.8em}
-\end{wrapfigure}
-
-On the diagonal (\(T_{part}=T_{join}\)), \texttt{par\_pj\_wb\_map} reaches:
-
-\begin{itemize}
-    \item speedup \(3.09\times\) at 4 threads;
-    \item speedup \(6.87\times\) at 16 threads;
-    \item speedup \(7.62\times\) at 64 threads.
-\end{itemize}
-
-Scaling is strong up to about 32 threads, then gains are smaller. This is coherent with the partition plateau and with increased overhead/imbalance sensitivity in the join stage at high thread counts.
-
-In fact, the best result is got with \texttt{par\_pj\_wb\_map} using 16 join threads and 32 partition threads, with a speedup of about \(8.26\times\).
-
-\subsection{Weak Scaling}
-Weak-scaling results are now measured with a dedicated campaign (\texttt{weak\_scaling.cpp}) and grid:
-\(N \in \{10,20,40,80\}\) million records per relation, \(T \in \{4,8,16,32\}\), and \(T_{part}=T_{join}\), with \(P=256\), seed \(=13\), and \(max\_key=10^6\).  
-Each \((N,T)\) point is repeated 5 times, then averaged.
-
-The weak-scaling curves are consistent across input sizes. Relative to 4 threads (same \(N\)):
-\begin{itemize}
-    \item at 8 threads, speedup is about \(1.65\times\);
-    \item at 16 threads, speedup is about \(2.36\)--\(2.55\times\);
-    \item at 32 threads, speedup is about \(2.64\)--\(2.82\times\).
-\end{itemize}
-The best observed weak-scaling speedup is \(2.82\times\) (for \(N=80\)M at 32 threads). This indicates good scalability trend with non-ideal efficiency at high thread counts, consistent with memory traffic and synchronization overheads.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.68\linewidth]{../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png}
-    \caption{Weak-scaling speedup versus number of threads for each \(N\).}
-    \label{fig:weak-scaling}
-\end{figure}
-
 \subsection{Speedup}
-Global speedup is computed against the sequential mean total time (\(4.191\) s).
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.62\linewidth]{../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
-    \caption{Total speedup matrix over thread combinations and variants.}
-    \label{fig:speedup}
-\end{figure}
+Global speedup is computed against the sequential baseline.
 
 \begin{table}[H]
     \centering
@@ -207,18 +150,84 @@ Global speedup is computed against the sequential mean total time (\(4.191\) s).
         \texttt{hashjoin\_par\_pj\_wb\_map} & 32 & 16 & 0.507 & \(8.26\times\) \\
         \bottomrule
     \end{tabular}
-    \caption{Best observed configuration per executable (baseline: sequential mean total time).}
+    \caption{Best observed configuration per executable.}
     \label{tab:best-speedups}
 \end{table}
 
 The table confirms the optimization trajectory: partition-only parallelization gives limited gains, while parallel join plus balanced scheduling gives the main jump; flatter data structures in \texttt{par\_pj\_wb\_map} provide the final improvement.
+
+The gain of workload balancing alone (\texttt{par\_pj\_wb} vs \texttt{par\_pj}) is small in this campaign.  
+With \(P=256\), \(NS=NR=5 \cdot 10^7\) (which means that the total number of elements is $10^8$) and 32 join threads, each thread still processes a lot of partitions.
+So a first observation could be that the workload could be close to the average even with contiguous assignment.
+Another one, instead, could be that the size of the partitions is very similar, so the balancing isn't much useful. 
+For this reasons, balancing has limited improvement and the extra speedup is almost absent.
+A larger benefit could be expected when the dataset is smaller or when effective workload is concentrated in fewer hot partitions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\linewidth]{../img/006_speedup_total_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Total speedup matrix over thread combinations and variants.}
+    \label{fig:speedup}
+\end{figure}
+
+\subsection{Strong Scaling}
+Strong scaling is measured by fixing input size and increasing threads.
+
+On the diagonal (\(T_{part} = T_{join}\), with $T$ number of threads), \texttt{par\_pj\_wb\_map} reaches:
+
+\begin{itemize}
+    \item speedup \(3.09\times\) at 4 threads;
+    \item speedup \(6.87\times\) at 16 threads;
+    \item speedup \(7.62\times\) at 64 threads.
+\end{itemize}
+
+Scaling is strong up to 32 threads for the partition phase and up to 16 threads for the join phase, then gains are smaller. This is coherent with the partition plateau and with increased overhead/imbalance sensitivity in the join stage at high thread counts.
+
+In fact, the best result is got with \texttt{par\_pj\_wb\_map} using 16 join threads and 32 partition threads, with a speedup of about \(8.26\times\).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.49\linewidth]{../img/007_partition_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}\hfill
+    \includegraphics[width=0.49\linewidth]{../img/008_join_throughput_matrix_nr50000000_ns50000000_maxkey1000000.png}
+    \caption{Partition-throughput and join-throughput matrices under fixed problem size.}
+    \label{fig:strong-phase}
+\end{figure}
+
+\subsection{Weak Scaling}
+Weak-scaling results are now measured with a dedicated campaign (\texttt{weak\_scaling.cpp}) and grid:
+\(N \in \{10,20,40,80\}\) million records per relation and \(T \in \{4,8,16,32\}\) (with \(T=T_{part}=T_{join}\)).
+Each \((N,T)\) point is repeated 5 times, then averaged to avoid unstabile measures.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.68\linewidth]{../img/010_weak_scaling_speedup_vs_threads_by_N_weak_scaling.png}
+    \caption{Weak-scaling speedup versus number of threads for each \(N\).}
+    \label{fig:weak-scaling}
+\end{figure}
+
+The weak-scaling curves are consistent across input sizes. Relative to 4 threads (same \(N\)):
+\begin{itemize}
+    \item at 8 threads, speedup is about \(1.65\times\);
+    \item at 16 threads, speedup is about \(2.36\)--\(2.55\times\);
+    \item at 32 threads, speedup is about \(2.64\)--\(2.82\times\).
+\end{itemize}
+This indicates good scalability trend with non-ideal efficiency at high thread counts, consistent with memory traffic and synchronization overheads.
+
+
+\section{Correctness validation}
+Correctness checks are handled by \texttt{checker.cpp}. The checker scans the output directory (\texttt{out/} by default), reads all regular files, and compares their raw content byte-by-byte against the first file.
+The logic is intentionally strict: if at least one file differs, it reports the mismatch and returns a non-OK status.
+
+In this project, each Slurm output file stores the final triple: \texttt{join\_count}, \texttt{checksum1}, \texttt{checksum2}.
+Therefore, identical files imply identical final join outputs across compared runs. In the collected data, all variants produced the same values, which confirms that optimization changes preserve functional correctness.
+
 
 \section{Conclusions}
 The results show a clear progression:
 \begin{itemize}
     \item parallelizing only partitioning is not sufficient (speedup capped around \(1.75\times\));
     \item parallelizing join is the dominant improvement (around \(7.6\times\));
-    \item workload balancing improves robustness of high-thread runs;
+    \item workload balancing improves robustness, but in this setup its standalone speedup is small because average work per thread is already similar;
     \item locality-oriented structures (\texttt{par\_pj\_wb\_map}) deliver the best result (\(8.26\times\)).
 \end{itemize}
 
